@@ -14,8 +14,8 @@ VENV_PYTHON_PATH = os.path.join(PROJECT_DIR, 'venv', 'bin', 'python')
 PID_DIR = os.path.join(PROJECT_DIR, 'pids')
 LOGS_DIR = os.path.join(PROJECT_DIR, 'logs') # For the llm_processor.py logs
 
-DB_FILE_NAME = 'nous_agi.db'
-DB_FULL_PATH = os.path.expanduser(f'~/nous_agi/{DB_FILE_NAME}')
+DB_FILE_NAME = 'n0m1_agi.db'
+DB_FULL_PATH = os.path.expanduser(f'~/n0m1_agi/{DB_FILE_NAME}')
 AUTORUN_TABLE_NAME = 'autorun_components'
 LIFECYCLE_TABLE_NAME = 'component_lifecycle_log'
 MANAGER_ID = 'main_llm_manager' # This manager's identifier
