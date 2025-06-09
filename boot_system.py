@@ -5,7 +5,7 @@ import sys
 import time
 
 # --- Configuration ---
-PROJECT_DIR = os.path.dirname(os.path.abspath(__file__)) # Assumes boot_system.py is in nouse_agi
+PROJECT_DIR = os.path.dirname(os.path.abspath(__file__)) # Assumes boot_system.py is in n0m1_agi
 VENV_PYTHON_PATH = os.path.join(PROJECT_DIR, 'venv', 'bin', 'python')
 
 # Define the manager scripts to be launched
@@ -56,7 +56,7 @@ def launch_manager(manager_script_name):
         return None
 
 if __name__ == "__main__":
-    print("--- Starting nouse_agi System ---")
+    print("--- Starting n0m1_agi System ---")
     check_python_interpreter()
 
     if not os.path.exists(LOGS_DIR):
@@ -77,7 +77,7 @@ if __name__ == "__main__":
     if launched_managers:
         print("\n--- All configured managers launched. ---")
         print("System components should now be starting up via their respective managers.")
-        print("Check individual logs in '~/nouse_agi/logs/' (for daemons/nanos) and '~/nouse_agi/logs_managers/' (for managers).")
+        print("Check individual logs in '~/n0m1_agi/logs/' (for daemons/nanos) and '~/n0m1_agi/logs_managers/' (for managers).")
         print("This boot script will now exit. Manager processes will continue running in the background.")
     else:
         print("\n--- No managers were successfully launched. Please check errors. ---")
