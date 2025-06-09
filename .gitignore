@@ -1,0 +1,17 @@
+# Python virtual environment
+venv/
+
+# Database file
+*.db
+
+# Log and PID directories
+logs/
+logs_managers/
+pids/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# macOS specific files
+.DS_Store
