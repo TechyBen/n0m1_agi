@@ -6,23 +6,23 @@ import re
 import struct
 import os
 import datetime
-import argparse # New import
+import argparse
 
 # --- Configuration ---
 DB_FILE_NAME = 'n0m1_agi.db'
 DB_FULL_PATH = os.path.expanduser(f'~/n0m1_agi/{DB_FILE_NAME}')
-RAW_DATA_TABLE_NAME = 'cpu_temperature_log' # Where it logs temp data
-LIFECYCLE_TABLE_NAME = 'component_lifecycle_log' # For startup announcement
-COMPONENT_ID = 'temp_main' # Its unique identifier
+RAW_DATA_TABLE_NAME = 'cpu_temperature_log'
+LIFECYCLE_TABLE_NAME = 'component_lifecycle_log'
+COMPONENT_ID = 'temp_main'
 
 SMC_COMMAND = 'smc'
 SMC_KEY = 'Th0D'
-POLLING_INTERVAL_SECONDS = 10 # Or your preferred interval
+POLLING_INTERVAL_SECONDS = 10
 # --- End Configuration ---
 
 HEX_RE = re.compile(r'\(bytes ([0-9A-Fa-f]{2}) ([0-9A-Fa-f]{2}) ([0-9A-Fa-f]{2}) ([0-9A-Fa-f]{2})\)')
 
-def create_temp_data_table_if_not_exists(): # Renamed for clarity
+def create_temp_data_table_if_not_exists():
     conn = None
     try:
         conn = sqlite3.connect(DB_FULL_PATH)
@@ -42,7 +42,7 @@ def create_temp_data_table_if_not_exists(): # Renamed for clarity
         if conn:
             conn.close()
 
-def annce_startup(run_type_arg):
+def announce_startup(run_type_arg):  # Fixed function name
     conn = None
     try:
         conn = sqlite3.connect(DB_FULL_PATH)
@@ -57,20 +57,16 @@ def annce_startup(run_type_arg):
             VALUES (?, ?, 'STARTED_SUCCESSFULLY', ?, ?, ?)
         """, (COMPONENT_ID, process_pid, run_type_arg, message, script_full_path))
         conn.commit()
-        print(f"[{COMPONENT_ID}] Successfully annced startup (PID: {process_pid}, RunType: {run_type_arg}) to {LIFECYCLE_TABLE_NAME}.")
+        print(f"[{COMPONENT_ID}] Successfully announced startup (PID: {process_pid}, RunType: {run_type_arg}) to {LIFECYCLE_TABLE_NAME}.")
     except sqlite3.Error as e:
-        print(f"[{COMPONENT_ID}] DB Error anncing startup to {LIFECYCLE_TABLE_NAME}: {e}")
-        # Decide if you want to raise this or just log and continue
+        print(f"[{COMPONENT_ID}] DB Error announcing startup to {LIFECYCLE_TABLE_NAME}: {e}")
     except Exception as e:
-        print(f"[{COMPONENT_ID}] Unexpected error anncing startup: {e}")
+        print(f"[{COMPONENT_ID}] Unexpected error announcing startup: {e}")
     finally:
         if conn:
             conn.close()
 
-
 def get_smc_cpu_temp():
-    # This function remains the same as your working version from response #67
-    # ... (your existing get_smc_cpu_temp logic) ...
     try:
         out = subprocess.check_output([SMC_COMMAND,'-k',SMC_KEY,'-r'], text=True, timeout=5)
         m = HEX_RE.search(out)
@@ -90,16 +86,16 @@ def get_smc_cpu_temp():
         print(f"[{COMPONENT_ID}] Error during SMC read/decode for key {SMC_KEY}: {e}")
         raise
 
-def main_loop(run_type_arg): # Pass run_type for context if needed, though not used in loop itself
+def main_loop(run_type_arg):
     print(f"[{COMPONENT_ID}] Starting main loop. Polling every {POLLING_INTERVAL_SECONDS}s. Run Type: {run_type_arg}")
-    conn = None # Initialize connection variable outside loop
+    conn = None
     try:
         while True:
             temp = None
             try:
                 temp = get_smc_cpu_temp()
                 
-                if conn is None: # Re-establish connection if lost (e.g., after an error)
+                if conn is None:
                    conn = sqlite3.connect(DB_FULL_PATH)
                 
                 cur = conn.cursor()
@@ -112,19 +108,17 @@ def main_loop(run_type_arg): # Pass run_type for context if needed, though not u
 
             except Exception as e:
                 print(f"[{COMPONENT_ID} - {datetime.datetime.now().strftime('%H:%M:%S')}] Error in loop: {e}")
-                if conn: # If there was an error, close the connection; it will be reopened
+                if conn:
                     try:
                         conn.close()
                     except: pass
                     conn = None 
-                # Optional: log this loop error to component_lifecycle_log as well
             
             time.sleep(POLLING_INTERVAL_SECONDS)
-    finally: # Ensure connection is closed on graceful exit (e.g. Ctrl+C if main is wrapped)
+    finally:
         if conn:
             conn.close()
             print(f"[{COMPONENT_ID}] Database connection closed.")
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=f"{COMPONENT_ID} - CPU Temperature Daemon for n0m1_agi.")
@@ -134,12 +128,10 @@ if __name__ == "__main__":
 
     print(f"--- Starting {COMPONENT_ID} Daemon ---")
     try:
-        create_temp_data_table_if_not_exists() # Its own data table
-        announce_startup(args.run_type)      # Announce to lifecycle log
-        main_loop(args.run_type)             # Start the main processing
+        create_temp_data_table_if_not_exists()
+        announce_startup(args.run_type)  # Fixed function call
+        main_loop(args.run_type)
     except KeyboardInterrupt:
         print(f"\n{COMPONENT_ID} Daemon stopped by user.")
-        # Optionally log 'STOPPED_BY_USER' to component_lifecycle_log here
     except Exception as e:
-        print(f"\nAn critical error occurred in {COMPONENT_ID} Daemon: {e}")
-        # Optionally log 'CRITICAL_ERROR' to component_lifecycle_log here
+        print(f"\nA critical error occurred in {COMPONENT_ID} Daemon: {e}")
