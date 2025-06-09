@@ -9,8 +9,8 @@ import datetime
 import argparse # New import
 
 # --- Configuration ---
-DB_FILE_NAME = 'nous_agi.db'
-DB_FULL_PATH = os.path.expanduser(f'~/nous_agi/{DB_FILE_NAME}')
+DB_FILE_NAME = 'n0m1_agi.db'
+DB_FULL_PATH = os.path.expanduser(f'~/n0m1_agi/{DB_FILE_NAME}')
 RAW_DATA_TABLE_NAME = 'cpu_temperature_log' # Where it logs temp data
 LIFECYCLE_TABLE_NAME = 'component_lifecycle_log' # For startup announcement
 COMPONENT_ID = 'temp_main' # Its unique identifier
@@ -42,7 +42,7 @@ def create_temp_data_table_if_not_exists(): # Renamed for clarity
         if conn:
             conn.close()
 
-def announce_startup(run_type_arg):
+def annce_startup(run_type_arg):
     conn = None
     try:
         conn = sqlite3.connect(DB_FULL_PATH)
@@ -57,12 +57,12 @@ def announce_startup(run_type_arg):
             VALUES (?, ?, 'STARTED_SUCCESSFULLY', ?, ?, ?)
         """, (COMPONENT_ID, process_pid, run_type_arg, message, script_full_path))
         conn.commit()
-        print(f"[{COMPONENT_ID}] Successfully announced startup (PID: {process_pid}, RunType: {run_type_arg}) to {LIFECYCLE_TABLE_NAME}.")
+        print(f"[{COMPONENT_ID}] Successfully annced startup (PID: {process_pid}, RunType: {run_type_arg}) to {LIFECYCLE_TABLE_NAME}.")
     except sqlite3.Error as e:
-        print(f"[{COMPONENT_ID}] DB Error announcing startup to {LIFECYCLE_TABLE_NAME}: {e}")
+        print(f"[{COMPONENT_ID}] DB Error anncing startup to {LIFECYCLE_TABLE_NAME}: {e}")
         # Decide if you want to raise this or just log and continue
     except Exception as e:
-        print(f"[{COMPONENT_ID}] Unexpected error announcing startup: {e}")
+        print(f"[{COMPONENT_ID}] Unexpected error anncing startup: {e}")
     finally:
         if conn:
             conn.close()
@@ -127,7 +127,7 @@ def main_loop(run_type_arg): # Pass run_type for context if needed, though not u
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description=f"{COMPONENT_ID} - CPU Temperature Daemon for nous_agi.")
+    parser = argparse.ArgumentParser(description=f"{COMPONENT_ID} - CPU Temperature Daemon for n0m1_agi.")
     parser.add_argument('--run_type', type=str, default="MANUAL_RUN", 
                         help="Type of run (e.g., PRIMARY_RUN, TEST_ATTEMPT, MANUAL_RUN)")
     args = parser.parse_args()
