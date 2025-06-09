@@ -14,8 +14,8 @@ VENV_PYTHON_PATH = os.path.join(PROJECT_DIR, 'venv', 'bin', 'python')
 PID_DIR = os.path.join(PROJECT_DIR, 'pids')
 LOGS_DIR = os.path.join(PROJECT_DIR, 'logs')
 
-DB_FILE_NAME = 'nous_agi.db'
-DB_FULL_PATH = os.path.expanduser(f'~/nous_agi/{DB_FILE_NAME}')
+DB_FILE_NAME = 'n0m1_agi.db'
+DB_FULL_PATH = os.path.expanduser(f'~/n0m1_agi/{DB_FILE_NAME}')
 AUTORUN_TABLE_NAME = 'autorun_components'
 LIFECYCLE_TABLE_NAME = 'component_lifecycle_log'
 MANAGER_ID = 'nano_manager' # This manager's identifier for affinity
@@ -171,7 +171,7 @@ if __name__ == "__main__":
         print(f"ERROR: Python interpreter not found at '{VENV_PYTHON_PATH}'. Exiting.")
         sys.exit(1)
 
-    parser = argparse.ArgumentParser(description=f"{MANAGER_ID.replace('_',' ').title()} for nous_agi.")
+    parser = argparse.ArgumentParser(description=f"{MANAGER_ID.replace('_',' ').title()} for n0m1_agi.")
     # Simplified CLI for managers that are primarily auto-run by boot_system.py
     # We can expand this later if direct CLI control for individual nanos via nano_manager is needed often.
     args_action = sys.argv[1] if len(sys.argv) > 1 else 'autorun' # Default to autorun
