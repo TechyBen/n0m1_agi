@@ -150,11 +150,28 @@ Adding New Components
 Create your component script
 Add to database:
 
-sqlINSERT INTO autorun_components 
+sqlINSERT INTO autorun_components
 (component_id, base_script_name, manager_affinity, desired_state, launch_args_json)
 VALUES ('my_component', 'my_script.py', 'daemon_manager', 'active', '{}');
 
 Restart the appropriate manager or system
+
+Using the LLM Processor and Nano Instances
+-----------------------------------------
+The repository includes example components for managing both a large language
+model and many lightweight models:
+
+* **llm_processor.py** – loaded by `main_llm_manager.py`. It uses the
+  HuggingFace `transformers` library to pull down an open‑source model (default
+  `distilgpt2`) and then enters an idle loop while logging lifecycle events.
+* **nano_instance.py** – launched by `nano_manager.py`. Multiple instances can
+  run in parallel by specifying `--instance_id` and `--model` arguments. These
+  nano models are suitable for tiny GPT variants and other small LLMs.
+
+To enable these components, insert or update records in the
+`autorun_components` table with the appropriate `manager_affinity` and
+`launch_args_json` values. When the system starts, the managers will read the
+table and launch the configured models.
 
 Custom Managers
 Managers should:
