@@ -25,6 +25,7 @@ DB_FILE_NAME = 'n0m1_agi.db'
 DB_FULL_PATH = os.path.expanduser(f'~/n0m1_agi/{DB_FILE_NAME}')
 METRICS_TABLE = 'system_metrics_log'
 LIFECYCLE_TABLE_NAME = 'component_lifecycle_log'
+OUTPUT_TABLE = 'nano_outputs'
 COMPONENT_ID_PREFIX = 'nano_instance'
 # --- End Configuration ---
 
@@ -73,6 +74,16 @@ def fetch_recent_metrics(conn: sqlite3.Connection, table: str, limit: int = 1):
     return cur.fetchall()
 
 
+def summarize_metrics(entry):
+    """Return summary string if metrics indicate noteworthy event."""
+    if not entry:
+        return None
+    ts, cpu_temp, cpu_usage, mem_usage = entry
+    if cpu_temp is not None and cpu_temp > 80:
+        return f"High CPU temperature detected: {cpu_temp}C"
+    return None
+
+
 def main():
     parser = argparse.ArgumentParser(description='Nano instance')
     parser.add_argument('--instance_id', default='default', help='Instance identifier')
@@ -109,7 +120,15 @@ def main():
             rows = fetch_recent_metrics(conn, args.metrics_table, limit=1)
             if rows:
                 context.append(rows[0])
-                print(f"[nano:{args.instance_id}] Latest metrics: {rows[0]}")
+                latest = rows[0]
+                print(f"[nano:{args.instance_id}] Latest metrics: {latest}")
+                summary = summarize_metrics(latest)
+                if summary:
+                    conn.execute(
+                        f"INSERT INTO {OUTPUT_TABLE} (nano_id, content) VALUES (?, ?)",
+                        (args.instance_id, summary),
+                    )
+                    conn.commit()
             time.sleep(args.pull_interval)
     except KeyboardInterrupt:
         pass
