@@ -67,6 +67,17 @@ def create_database_schema():
                 temperature_celsius REAL NOT NULL
             );
         """)
+
+        # 4. system_metrics_log table - Generic system metrics
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS system_metrics_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                cpu_temp REAL,
+                cpu_usage REAL NOT NULL,
+                mem_usage REAL NOT NULL
+            );
+        """)
         
         # Create indexes for better performance
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_ac_manager ON autorun_components (manager_affinity);")
@@ -75,6 +86,7 @@ def create_database_schema():
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_cll_event_type ON component_lifecycle_log (event_type);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_cll_timestamp ON component_lifecycle_log (event_timestamp);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_temp_timestamp ON cpu_temperature_log (timestamp);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_metrics_timestamp ON system_metrics_log (timestamp);")
         
         # Create trigger to update modified_timestamp
         cursor.execute("""
@@ -116,6 +128,15 @@ def populate_default_components():
                 'launch_args_json': '{}',
                 'run_type_on_boot': 'PRIMARY_RUN',
                 'description': 'CPU temperature monitoring daemon'
+            },
+            {
+                'component_id': 'system_metrics_daemon',
+                'base_script_name': 'system_metrics_daemon.py',
+                'manager_affinity': 'daemon_manager',
+                'desired_state': 'active',
+                'launch_args_json': '{}',
+                'run_type_on_boot': 'PRIMARY_RUN',
+                'description': 'Cross-platform system metrics collector'
             },
             {
                 'component_id': 'main_llm_processor',
