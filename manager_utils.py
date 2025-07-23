@@ -7,11 +7,21 @@ import os
 import signal
 import time
 import sqlite3
+import sys
 from typing import Optional, Tuple
 
 
 def get_venv_python(project_dir: str) -> str:
-    """Return path to the virtual environment Python interpreter."""
+    """Return path to the virtual environment Python interpreter.
+
+    If the environment variable ``N0M1_NATIVE`` is set to ``1`` or ``true``,
+    the path to the running Python interpreter (``sys.executable``) is
+    returned instead. This allows the managers to run natively on systems
+    without a dedicated virtual environment.
+    """
+    if os.environ.get("N0M1_NATIVE", "").lower() in {"1", "true", "yes"}:
+        return sys.executable
+
     if os.name == "nt":
         return os.path.join(project_dir, "venv", "Scripts", "python.exe")
     return os.path.join(project_dir, "venv", "bin", "python")

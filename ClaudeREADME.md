@@ -29,6 +29,9 @@ source venv/bin/activate
 # Install dependencies (if any)
 pip install psutil
 
+# Tip: set N0M1_NATIVE=1 to run managers with the current Python interpreter
+# rather than the virtual environment. Useful for testing without a venv.
+
 # Initialize database
 ./init_database.py
 2. System Control

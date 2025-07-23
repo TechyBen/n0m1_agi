@@ -9,7 +9,12 @@ import pytest
 # Ensure the project root is on sys.path so manager_utils can be imported
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from manager_utils import write_pid_file, read_pid_file, is_process_running
+from manager_utils import (
+    write_pid_file,
+    read_pid_file,
+    is_process_running,
+    get_venv_python,
+)
 
 
 def test_write_and_read_pid_file_roundtrip(tmp_path):
@@ -35,3 +40,11 @@ def test_is_process_running_for_running_and_stopped_process():
         proc.wait()
     # After process termination, it should report not running
     assert not is_process_running(proc.pid)
+
+
+def test_get_venv_python_native_env(monkeypatch, tmp_path):
+    monkeypatch.setenv("N0M1_NATIVE", "1")
+    path = get_venv_python(str(tmp_path))
+    assert path == sys.executable
+    monkeypatch.delenv("N0M1_NATIVE", raising=False)
+
