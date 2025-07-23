@@ -379,6 +379,44 @@ class SystemController:
             print(f"Database error: {e}")
             return False
 
+    def show_metrics(self, limit: int = 10):
+        """Display recent system metrics."""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT timestamp, cpu_usage, mem_usage, cpu_temp "
+                "FROM system_metrics_log ORDER BY timestamp DESC LIMIT ?",
+                (limit,),
+            )
+            rows = cursor.fetchall()
+            conn.close()
+
+            if not rows:
+                print("No metrics data available.")
+                return
+
+            cpu_vals = [r[1] for r in rows if r[1] is not None]
+            mem_vals = [r[2] for r in rows if r[2] is not None]
+            temp_vals = [r[3] for r in rows if r[3] is not None]
+
+            last = rows[0]
+            print("\nRecent System Metrics:\n")
+            print(f" Last update : {last[0]}")
+            if cpu_vals:
+                avg_cpu = sum(cpu_vals) / len(cpu_vals)
+                print(f" CPU usage   : last {last[1]}% | avg {avg_cpu:.1f}%")
+            if mem_vals:
+                avg_mem = sum(mem_vals) / len(mem_vals)
+                print(f" Memory usage: last {last[2]}% | avg {avg_mem:.1f}%")
+            if temp_vals:
+                avg_temp = sum(temp_vals) / len(temp_vals)
+                print(f" CPU temp    : last {last[3]}°C | avg {avg_temp:.1f}°C")
+            else:
+                print(" CPU temp    : N/A")
+        except sqlite3.Error as e:
+            print(f"Database error: {e}")
+
 def main():
     parser = argparse.ArgumentParser(
         description='n0m1_agi System Control',
@@ -395,15 +433,18 @@ Examples:
   %(prog)s logs -f boot_system      # Follow logs in real-time
   %(prog)s enable temp_main_daemon  # Enable a component
   %(prog)s disable nano_analyzer_01 # Disable a component
+  %(prog)s metrics --limit 5        # Show recent system metrics
         """
     )
     
-    parser.add_argument('command', 
-                       choices=['start', 'stop', 'restart', 'status', 'logs', 'enable', 'disable'],
+    parser.add_argument('command',
+                       choices=['start', 'stop', 'restart', 'status', 'logs', 'enable', 'disable', 'metrics'],
                        help='Command to execute')
     parser.add_argument('component', nargs='?', help='Component ID (for logs/enable/disable)')
     parser.add_argument('-f', '--follow', action='store_true', help='Follow log output')
     parser.add_argument('-n', '--lines', type=int, default=50, help='Number of log lines to show')
+    parser.add_argument('--limit', type=int, default=10,
+                        help='Number of recent metric rows to read')
     parser.add_argument('--force', action='store_true', help='Force stop')
     parser.add_argument('--detailed', action='store_true', help='Show detailed status')
     
@@ -428,7 +469,10 @@ Examples:
             lines=args.lines,
             follow=args.follow
         )
-        
+
+    elif args.command == 'metrics':
+        controller.show_metrics(limit=args.limit)
+
     elif args.command in ['enable', 'disable']:
         if not args.component:
             print(f"ERROR: Component ID required for {args.command}")
