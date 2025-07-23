@@ -7,7 +7,13 @@ import argparse
 import signal
 import sqlite3
 import json
-from manager_utils import get_venv_python
+from manager_utils import (
+    get_venv_python,
+    read_pid_file,
+    remove_pid_file,
+    stop_component_with_timeout,
+    log_lifecycle_event,
+)
 
 # --- Configuration ---
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -103,11 +109,38 @@ def start_component(component_id, base_script_name, launch_args_list, run_type):
         return False
 
 def stop_component(component_id, signal_to_send=signal.SIGTERM):
-    # This function should be identical to stop_daemon in daemon_manager.py
-    # (or stop_service from system_manager.py, adapted for component_id)
-    # For brevity, assuming it's copied and works.
-    # It should also log to component_lifecycle_log events like 'STOP_REQUESTED', 'STOPPED_SUCCESSFULLY'
-    print(f"[{MANAGER_ID}] Placeholder: stop_component({component_id}) called.")
+    """Stop a running nano component by PID file."""
+    pid_file = get_pid_file_path(component_id)
+    pid = read_pid_file(pid_file)
+
+    if not pid or not is_process_running(pid):
+        log_lifecycle_event(
+            DB_FULL_PATH,
+            LIFECYCLE_TABLE_NAME,
+            component_id,
+            pid,
+            'STOPPED_SUCCESSFULLY',
+            None,
+            'Already stopped',
+            MANAGER_ID,
+        )
+        remove_pid_file(pid_file)
+        print(f"[{MANAGER_ID}] Component '{component_id}' already stopped.")
+        return True
+
+    result = stop_component_with_timeout(
+        component_id,
+        pid,
+        MANAGER_ID,
+        LIFECYCLE_TABLE_NAME,
+        DB_FULL_PATH,
+        timeout_seconds=10,
+        signal_to_send=signal_to_send,
+    )
+
+    if result:
+        remove_pid_file(pid_file)
+    return result
 
 
 def get_component_status(component_id):
