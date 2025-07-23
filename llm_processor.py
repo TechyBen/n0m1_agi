@@ -23,6 +23,9 @@ DB_FILE_NAME = 'n0m1_agi.db'
 DB_FULL_PATH = os.path.expanduser(f'~/n0m1_agi/{DB_FILE_NAME}')
 LIFECYCLE_TABLE_NAME = 'component_lifecycle_log'
 COMPONENT_ID = 'main_llm_processor'
+CONFIG_TABLE = 'llm_io_config'
+NOTIFY_TABLE = 'llm_notifications'
+POLL_INTERVAL = 5
 # --- End Configuration ---
 
 
@@ -52,6 +55,21 @@ def announce_startup(run_type: str):
         os.path.abspath(__file__),
     )
 
+def load_config(conn: sqlite3.Connection):
+    cur = conn.cursor()
+    cur.execute(
+        f"SELECT read_tables, output_table FROM {CONFIG_TABLE} WHERE llm_id=?",
+        (COMPONENT_ID,),
+    )
+    row = cur.fetchone()
+    if row:
+        read_tables = [t.strip() for t in row[0].split(',') if t.strip()]
+        output_table = row[1]
+    else:
+        read_tables = []
+        output_table = None
+    return read_tables, output_table
+
 
 def main():
     parser = argparse.ArgumentParser(description='Main LLM Processor')
@@ -63,12 +81,41 @@ def main():
     announce_startup(args.run_type)
     load_model(args.model)
 
+    conn = sqlite3.connect(DB_FULL_PATH)
+    read_tables, output_table = load_config(conn)
+
     print(f"[{COMPONENT_ID}] Entering idle loop")
     try:
         while True:
-            time.sleep(5)
+            cur = conn.cursor()
+            cur.execute(
+                f"SELECT id, notification_type FROM {NOTIFY_TABLE} WHERE llm_id=? AND processed=0",
+                (COMPONENT_ID,),
+            )
+            note = cur.fetchone()
+            if note:
+                cur.execute(f"UPDATE {NOTIFY_TABLE} SET processed=1 WHERE id=?", (note[0],))
+                conn.commit()
+                if note[1] == 'CONFIG_RELOAD':
+                    read_tables, output_table = load_config(conn)
+                elif note[1] == 'RUN':
+                    for table in read_tables:
+                        try:
+                            cur.execute(f"SELECT COUNT(*) FROM {table}")
+                            count = cur.fetchone()[0]
+                        except sqlite3.Error:
+                            count = 0
+                        cur.execute(
+                            f"INSERT INTO {output_table} (llm_id, content) VALUES (?, ?)",
+                            (COMPONENT_ID, f'{table} rows={count}'),
+                        )
+                    conn.commit()
+
+            time.sleep(POLL_INTERVAL)
     except KeyboardInterrupt:
         pass
+    finally:
+        conn.close()
 
 
 if __name__ == '__main__':
