@@ -52,6 +52,9 @@ chmod +x n0m1_control.py
 
 # Restart the system
 ./n0m1_control.py restart
+
+# View recent system metrics
+./n0m1_control.py metrics --limit 5
 3. Component Management
 bash# Enable a component
 ./n0m1_control.py enable system_metrics_daemon
