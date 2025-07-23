@@ -11,12 +11,13 @@ import subprocess
 import sqlite3
 import json
 import argparse
+from manager_utils import get_venv_python
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Tuple
 
 # --- Configuration ---
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
-VENV_PYTHON_PATH = os.path.join(PROJECT_DIR, 'venv', 'bin', 'python')
+VENV_PYTHON_PATH = get_venv_python(PROJECT_DIR)
 DB_FILE_NAME = 'n0m1_agi.db'
 DB_FULL_PATH = os.path.expanduser(f'~/n0m1_agi/{DB_FILE_NAME}')
 BOOT_PID_FILE = os.path.join(PROJECT_DIR, "pids", "boot_system.pid")
