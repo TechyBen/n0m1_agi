@@ -26,8 +26,8 @@ bash# Create virtual environment
 python3 -m venv venv
 source venv/bin/activate
 
-# Install dependencies (if any)
-pip install psutil
+# Install dependencies
+pip install -r requirements.txt
 
 # Tip: set N0M1_NATIVE=1 to run managers with the current Python interpreter
 # rather than the virtual environment. Useful for testing without a venv.
