@@ -190,6 +190,16 @@ To enable these components, insert or update records in the
 `launch_args_json` values. When the system starts, the managers will read the
 table and launch the configured models.
 
+Configuring the Main LLM
+------------------------
+The tables ``llm_io_config`` and ``llm_notifications`` allow runtime control of
+the main language model. ``llm_io_config`` stores comma-separated input tables
+and the output table for each LLM. Set ``needs_reload`` to ``1`` to signal a
+configuration change. The ``llm_config_daemon`` will write a ``CONFIG_RELOAD``
+notification to ``llm_notifications`` which causes ``llm_processor`` to reload
+its settings. A ``RUN`` notification instructs the processor to read from the
+allowed tables and write results to the designated output table.
+
 Custom Managers
 Managers should:
 

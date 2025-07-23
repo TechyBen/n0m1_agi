@@ -99,6 +99,27 @@ def create_database_schema():
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_cll_timestamp ON component_lifecycle_log (event_timestamp);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_temp_timestamp ON cpu_temperature_log (timestamp);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_metrics_timestamp ON system_metrics_log (timestamp);")
+
+        # 6. llm_io_config table - runtime configuration for LLM processors
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS llm_io_config (
+                llm_id TEXT PRIMARY KEY,
+                read_tables TEXT NOT NULL,
+                output_table TEXT NOT NULL,
+                needs_reload INTEGER DEFAULT 0
+            );
+        """)
+
+        # 7. llm_notifications table - push style notifications for LLMs
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS llm_notifications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                llm_id TEXT NOT NULL,
+                notification_type TEXT NOT NULL,
+                processed INTEGER DEFAULT 0,
+                created_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
         
         # Create trigger to update modified_timestamp
         cursor.execute("""
@@ -159,6 +180,15 @@ def populate_default_components():
                 'run_type_on_boot': 'PRIMARY_RUN',
                 'description': 'Main LLM processing component'
             },
+            {
+                'component_id': 'llm_config_daemon',
+                'base_script_name': 'llm_config_daemon.py',
+                'manager_affinity': 'daemon_manager',
+                'desired_state': 'active',
+                'launch_args_json': '{}',
+                'run_type_on_boot': 'PRIMARY_RUN',
+                'description': 'Daemon that manages LLM configuration notifications'
+            },
             # Example nano instances (inactive by default)
             {
                 'component_id': 'nano_analyzer_01',
@@ -183,7 +213,7 @@ def populate_default_components():
         for component in default_components:
             # Use INSERT OR IGNORE to avoid duplicates
             cursor.execute("""
-                INSERT OR IGNORE INTO autorun_components 
+                INSERT OR IGNORE INTO autorun_components
                 (component_id, base_script_name, manager_affinity, desired_state, 
                  launch_args_json, run_type_on_boot, description)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -201,7 +231,17 @@ def populate_default_components():
                 print(f"  Added component: {component['component_id']} ({component['desired_state']})")
             else:
                 print(f"  Component already exists: {component['component_id']}")
-        
+
+        # Insert default LLM IO configuration
+        cursor.execute(
+            """
+            INSERT OR IGNORE INTO llm_io_config (llm_id, read_tables, output_table, needs_reload)
+            VALUES ('main_llm_processor', 'system_metrics_log', 'nano_outputs', 0)
+            """
+        )
+        if cursor.rowcount > 0:
+            print("  Added llm_io_config for main_llm_processor")
+
         conn.commit()
         print("\nDefault components populated successfully.")
         
