@@ -7,6 +7,12 @@ import struct
 import os
 import datetime
 import argparse
+import shutil
+
+try:
+    import psutil
+except ImportError:  # psutil may not be installed
+    psutil = None
 
 # --- Configuration ---
 DB_FILE_NAME = 'n0m1_agi.db'
@@ -66,25 +72,36 @@ def announce_startup(run_type_arg):  # Fixed function name
         if conn:
             conn.close()
 
-def get_smc_cpu_temp():
-    try:
-        out = subprocess.check_output([SMC_COMMAND,'-k',SMC_KEY,'-r'], text=True, timeout=5)
-        m = HEX_RE.search(out)
-        if not m:
-            raise ValueError(f"Could not parse hex bytes from smc output: {out!r}")
-        b0, b1, b2, b3 = [int(x,16) for x in m.groups()]
-        raw = bytes([b0, b1, b2, b3])
-        temperature = struct.unpack('<f', raw)[0]
-        return temperature
-    except FileNotFoundError:
-        print(f"[{COMPONENT_ID}] Error: Command '{SMC_COMMAND}' not found.")
-        raise
-    except subprocess.TimeoutExpired:
-        print(f"[{COMPONENT_ID}] Error: Command '{SMC_COMMAND}' timed out.")
-        raise
-    except Exception as e:
-        print(f"[{COMPONENT_ID}] Error during SMC read/decode for key {SMC_KEY}: {e}")
-        raise
+def get_cpu_temp():
+    """Return the current CPU temperature in Celsius or None if unavailable."""
+    # First try psutil if available
+    if psutil is not None:
+        try:
+            temps = psutil.sensors_temperatures(fahrenheit=False)
+            if temps:
+                for entries in temps.values():
+                    for entry in entries:
+                        current = getattr(entry, "current", None)
+                        if current is not None:
+                            return float(current)
+            else:
+                print(f"[{COMPONENT_ID}] psutil returned no temperature data.")
+        except Exception as e:
+            print(f"[{COMPONENT_ID}] psutil error retrieving temperature: {e}")
+
+    # Fallback to macOS 'smc' command if available
+    if shutil.which(SMC_COMMAND):
+        try:
+            out = subprocess.check_output([SMC_COMMAND, '-k', SMC_KEY, '-r'], text=True, timeout=5)
+            m = HEX_RE.search(out)
+            if m:
+                b0, b1, b2, b3 = [int(x, 16) for x in m.groups()]
+                raw = bytes([b0, b1, b2, b3])
+                return struct.unpack('<f', raw)[0]
+        except Exception as e:
+            print(f"[{COMPONENT_ID}] Fallback SMC read failed: {e}")
+
+    return None
 
 def main_loop(run_type_arg):
     print(f"[{COMPONENT_ID}] Starting main loop. Polling every {POLLING_INTERVAL_SECONDS}s. Run Type: {run_type_arg}")
@@ -93,18 +110,21 @@ def main_loop(run_type_arg):
         while True:
             temp = None
             try:
-                temp = get_smc_cpu_temp()
-                
-                if conn is None:
-                   conn = sqlite3.connect(DB_FULL_PATH)
-                
-                cur = conn.cursor()
-                cur.execute(
-                    f"INSERT INTO {RAW_DATA_TABLE_NAME} (temperature_celsius) VALUES (?)",
-                    (temp,)
-                )
-                conn.commit()
-                print(f"[{COMPONENT_ID} - {datetime.datetime.now().strftime('%H:%M:%S')}] Logged {SMC_KEY} = {temp:.1f}°C")
+                temp = get_cpu_temp()
+
+                if temp is not None:
+                    if conn is None:
+                       conn = sqlite3.connect(DB_FULL_PATH)
+
+                    cur = conn.cursor()
+                    cur.execute(
+                        f"INSERT INTO {RAW_DATA_TABLE_NAME} (temperature_celsius) VALUES (?)",
+                        (temp,)
+                    )
+                    conn.commit()
+                    print(f"[{COMPONENT_ID} - {datetime.datetime.now().strftime('%H:%M:%S')}] Logged CPU temp = {temp:.1f}°C")
+                else:
+                    print(f"[{COMPONENT_ID} - {datetime.datetime.now().strftime('%H:%M:%S')}] Temperature data unavailable.")
 
             except Exception as e:
                 print(f"[{COMPONENT_ID} - {datetime.datetime.now().strftime('%H:%M:%S')}] Error in loop: {e}")
