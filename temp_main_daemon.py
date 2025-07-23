@@ -13,7 +13,9 @@ DB_FILE_NAME = 'n0m1_agi.db'
 DB_FULL_PATH = os.path.expanduser(f'~/n0m1_agi/{DB_FILE_NAME}')
 RAW_DATA_TABLE_NAME = 'cpu_temperature_log'
 LIFECYCLE_TABLE_NAME = 'component_lifecycle_log'
-COMPONENT_ID = 'temp_main'
+# Use the same component_id that init_database.py inserts into the autorun
+# configuration so lifecycle logs align correctly.
+COMPONENT_ID = 'temp_main_daemon'
 
 SMC_COMMAND = 'smc'
 SMC_KEY = 'Th0D'
