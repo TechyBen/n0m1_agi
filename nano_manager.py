@@ -24,7 +24,7 @@ MANAGER_ID = 'nano_manager' # This manager's identifier for affinity
 
 # --- Utility Functions (get_pid_file_path, is_process_running, create_supporting_tables_if_not_exist) ---
 # These should be identical to those in daemon_manager.py
-# For brevity, I'll assume they are copied here. If not, let me know.
+# For brevity, I'll assume they are copied here.
 def get_pid_file_path(component_id):
     return os.path.join(PID_DIR, f"{component_id}.pid")
 
