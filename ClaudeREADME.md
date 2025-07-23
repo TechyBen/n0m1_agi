@@ -180,8 +180,10 @@ model and many lightweight models:
   HuggingFace `transformers` library to pull down an open‑source model (default
   `distilgpt2`) and then enters an idle loop while logging lifecycle events.
 * **nano_instance.py** – launched by `nano_manager.py`. Multiple instances can
-  run in parallel by specifying `--instance_id` and `--model` arguments. These
-  nano models are suitable for tiny GPT variants and other small LLMs.
+  run in parallel by specifying `--instance_id` and `--model` arguments. The
+  script can optionally pull recent rows from the `system_metrics_log` table and
+  maintain a context window. LoRA weights and a system prompt file may be
+  provided via `--lora` and `--system_prompt`.
 
 To enable these components, insert or update records in the
 `autorun_components` table with the appropriate `manager_affinity` and
