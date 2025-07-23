@@ -78,6 +78,18 @@ def create_database_schema():
                 mem_usage REAL NOT NULL
             );
         """)
+
+        # 5. nano_outputs table - Stores nano instance generated summaries
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS nano_outputs (
+                id INTEGER PRIMARY KEY,
+                nano_id TEXT,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                content TEXT
+            );
+            """
+        )
         
         # Create indexes for better performance
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_ac_manager ON autorun_components (manager_affinity);")
