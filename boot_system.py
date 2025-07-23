@@ -3,10 +3,11 @@ import subprocess
 import os
 import sys
 import time
+from manager_utils import get_venv_python
 
 # --- Configuration ---
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__)) # Assumes boot_system.py is in n0m1_agi
-VENV_PYTHON_PATH = os.path.join(PROJECT_DIR, 'venv', 'bin', 'python')
+VENV_PYTHON_PATH = get_venv_python(PROJECT_DIR)
 
 # Define the manager scripts to be launched
 # We assume these manager scripts, when run, will start their respective components.

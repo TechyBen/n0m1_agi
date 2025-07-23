@@ -11,10 +11,11 @@ import json
 import sqlite3
 from datetime import datetime
 from typing import Dict, List, Optional
+from manager_utils import get_venv_python
 
 # --- Configuration ---
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
-VENV_PYTHON_PATH = os.path.join(PROJECT_DIR, 'venv', 'bin', 'python')
+VENV_PYTHON_PATH = get_venv_python(PROJECT_DIR)
 CONFIG_FILE = os.path.join(PROJECT_DIR, 'config.json')
 DB_FILE_NAME = 'n0m1_agi.db'
 DB_FULL_PATH = os.path.expanduser(f'~/n0m1_agi/{DB_FILE_NAME}')

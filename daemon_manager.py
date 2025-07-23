@@ -14,18 +14,19 @@ import signal
 import sqlite3
 import json
 from manager_utils import (
+    get_venv_python,
     get_pid_file_path,
     is_process_running,
     read_pid_file,
     write_pid_file,
     remove_pid_file,
     log_lifecycle_event,
-    create_required_directories
+    create_required_directories,
 )
 
 # --- Configuration ---
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
-VENV_PYTHON_PATH = os.path.join(PROJECT_DIR, 'venv', 'bin', 'python')
+VENV_PYTHON_PATH = get_venv_python(PROJECT_DIR)
 PID_DIR = os.path.join(PROJECT_DIR, 'pids')
 LOGS_DIR = os.path.join(PROJECT_DIR, 'logs')
 

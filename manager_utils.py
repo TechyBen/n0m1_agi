@@ -9,6 +9,13 @@ import time
 import sqlite3
 from typing import Optional, Tuple
 
+
+def get_venv_python(project_dir: str) -> str:
+    """Return path to the virtual environment Python interpreter."""
+    if os.name == "nt":
+        return os.path.join(project_dir, "venv", "Scripts", "python.exe")
+    return os.path.join(project_dir, "venv", "bin", "python")
+
 def get_pid_file_path(pid_dir: str, component_id: str) -> str:
     """Get the PID file path for a component."""
     return os.path.join(pid_dir, f"{component_id}.pid")
