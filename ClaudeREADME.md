@@ -9,12 +9,17 @@ n0m1_agi/
 ├── manager_utils.py           # Shared utilities
 ├── init_database.py           # Database initialization
 ├── n0m1_control.py           # System control interface
-├── temp_main_daemon.py        # Example daemon (fixed)
+├── temp_main_daemon.py        # macOS-only temperature daemon
+├── system_metrics_daemon.py   # Cross-platform system metrics daemon
 ├── config.json               # Optional configuration
 ├── n0m1_agi.db              # SQLite database
 ├── logs/                     # Component logs
 ├── logs_managers/            # Manager logs
 └── pids/                     # PID files
+
+The new `system_metrics_daemon.py` collects CPU temperature (using macOS SMC on
+Darwin or `psutil` on Linux/Windows), CPU usage, and memory usage and stores the
+data in the `system_metrics_log` table.
 Quick Start
 1. Initial Setup
 bash# Create virtual environment
@@ -22,7 +27,7 @@ python3 -m venv venv
 source venv/bin/activate
 
 # Install dependencies (if any)
-# pip install -r requirements.txt
+pip install psutil
 
 # Initialize database
 ./init_database.py
@@ -46,13 +51,13 @@ chmod +x n0m1_control.py
 ./n0m1_control.py restart
 3. Component Management
 bash# Enable a component
-./n0m1_control.py enable temp_main_daemon
+./n0m1_control.py enable system_metrics_daemon
 
 # Disable a component
 ./n0m1_control.py disable nano_analyzer_01
 
 # View component logs
-./n0m1_control.py logs temp_main_daemon
+./n0m1_control.py logs system_metrics_daemon
 
 # Follow logs in real-time
 ./n0m1_control.py logs -f daemon_manager
@@ -62,6 +67,7 @@ Key Improvements
 Fixed typo in temp_main_daemon.py (annce_startup → announce_startup)
 Completed implementation of stop_component() functions
 Added proper error handling throughout
+Added system_metrics_daemon for cross-platform CPU and memory metrics
 
 2. Database Management
 
@@ -112,6 +118,8 @@ Timestamps and PIDs
 
 cpu_temperature_log
 Example data table for the temperature daemon
+system_metrics_log
+Cross-platform metrics collected by system_metrics_daemon
 Configuration
 Optional config.json
 json{
