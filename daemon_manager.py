@@ -21,6 +21,7 @@ from manager_utils import (
     write_pid_file,
     remove_pid_file,
     log_lifecycle_event,
+    log_db_access,
     create_required_directories,
 )
 
@@ -119,6 +120,7 @@ def get_components_from_db():
             FROM {AUTORUN_TABLE_NAME}
             WHERE manager_affinity = ?
         """, (MANAGER_ID,))
+        log_db_access(DB_FULL_PATH, MANAGER_ID, AUTORUN_TABLE_NAME, "READ")
         return cursor.fetchall()
     except sqlite3.Error as e:
         print(f"[{MANAGER_ID}] FATAL: Database Error fetching component list: {e}")

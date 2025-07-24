@@ -9,7 +9,7 @@ import os
 import sqlite3
 import time
 
-from manager_utils import log_lifecycle_event
+from manager_utils import log_lifecycle_event, log_db_access
 
 DB_FILE_NAME = 'n0m1_agi.db'
 DB_FULL_PATH = os.path.expanduser(f'~/n0m1_agi/{DB_FILE_NAME}')
@@ -57,6 +57,7 @@ def main_loop(run_type: str):
             ('main_llm_processor',),
         )
         row = cur.fetchone()
+        log_db_access(DB_FULL_PATH, COMPONENT_ID, CONFIG_TABLE, "READ")
         if row and row[0]:
             cur.execute(
                 f"INSERT INTO {NOTIFY_TABLE} (llm_id, notification_type) VALUES (?, ?)",
