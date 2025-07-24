@@ -76,7 +76,10 @@ def test_load_config_logs_access(tmp_path, monkeypatch):
     llm_processor.load_config(conn)
 
     cur = conn.cursor()
-    cur.execute("SELECT COUNT(*) FROM db_access_log WHERE table_name='llm_io_config'")
+    cur.execute(
+        "SELECT COUNT(*) FROM db_access_log WHERE table_name='llm_io_config' AND access_type='READ' AND component_id=?",
+        (llm_processor.COMPONENT_ID,)
+    )
     assert cur.fetchone()[0] == 1
     conn.close()
 
@@ -104,7 +107,15 @@ def test_llm_config_daemon_logs_access(tmp_path, monkeypatch):
 
     conn = sqlite3.connect(db)
     cur = conn.cursor()
-    cur.execute("SELECT COUNT(*) FROM db_access_log WHERE table_name='llm_io_config'")
+    cur.execute(
+        "SELECT COUNT(*) FROM db_access_log WHERE table_name='llm_io_config' AND access_type='READ' AND component_id=?",
+        (llm_config_daemon.COMPONENT_ID,)
+    )
+    assert cur.fetchone()[0] >= 1
+    cur.execute(
+        "SELECT COUNT(*) FROM db_access_log WHERE table_name='llm_notifications' AND access_type='WRITE' AND component_id=?",
+        (llm_config_daemon.COMPONENT_ID,)
+    )
     assert cur.fetchone()[0] >= 1
     conn.close()
 
@@ -121,7 +132,10 @@ def test_nano_instance_logs_metrics_access(tmp_path, monkeypatch):
 
     assert rows
     cur = conn.cursor()
-    cur.execute("SELECT COUNT(*) FROM db_access_log WHERE table_name='system_metrics_log'")
+    cur.execute(
+        "SELECT COUNT(*) FROM db_access_log WHERE table_name='system_metrics_log' AND access_type='READ' AND component_id=?",
+        ("nano_test",),
+    )
     assert cur.fetchone()[0] == 1
     conn.close()
 

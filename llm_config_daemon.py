@@ -59,10 +59,12 @@ def main_loop(run_type: str):
         )
         row = cur.fetchone()
         if row and row[0]:
+            log_db_access(DB_FULL_PATH, COMPONENT_ID, NOTIFY_TABLE, "WRITE")
             cur.execute(
                 f"INSERT INTO {NOTIFY_TABLE} (llm_id, notification_type) VALUES (?, ?)",
                 ('main_llm_processor', 'CONFIG_RELOAD'),
             )
+            log_db_access(DB_FULL_PATH, COMPONENT_ID, CONFIG_TABLE, "WRITE")
             cur.execute(
                 f"UPDATE {CONFIG_TABLE} SET needs_reload=0 WHERE llm_id=?",
                 ('main_llm_processor',),

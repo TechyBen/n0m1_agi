@@ -108,6 +108,7 @@ def main():
                             count = cur.fetchone()[0]
                         except sqlite3.Error:
                             count = 0
+                        log_db_access(DB_FULL_PATH, COMPONENT_ID, output_table, "WRITE")
                         cur.execute(
                             f"INSERT INTO {output_table} (llm_id, content) VALUES (?, ?)",
                             (COMPONENT_ID, f'{table} rows={count}'),
