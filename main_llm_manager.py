@@ -13,6 +13,7 @@ from manager_utils import (
     remove_pid_file,
     stop_component_with_timeout,
     log_lifecycle_event,
+    log_db_access,
 )
 
 # --- Configuration ---
@@ -167,10 +168,11 @@ def ensure_autorun_components_active():
         conn = sqlite3.connect(DB_FULL_PATH)
         cursor = conn.cursor()
         cursor.execute(f"""
-            SELECT component_id, base_script_name, launch_args_json, run_type_on_boot 
-            FROM {AUTORUN_TABLE_NAME} 
+            SELECT component_id, base_script_name, launch_args_json, run_type_on_boot
+            FROM {AUTORUN_TABLE_NAME}
             WHERE manager_affinity = ? AND desired_state = 'active'
         """, (MANAGER_ID,))
+        log_db_access(DB_FULL_PATH, MANAGER_ID, AUTORUN_TABLE_NAME, "READ")
         
         components_to_manage = cursor.fetchall()
         if not components_to_manage:

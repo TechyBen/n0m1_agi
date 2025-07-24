@@ -18,7 +18,7 @@ except ImportError:
     AutoTokenizer = None
     PeftModel = None
 
-from manager_utils import log_lifecycle_event
+from manager_utils import log_lifecycle_event, log_db_access
 
 # --- Configuration ---
 DB_FILE_NAME = 'n0m1_agi.db'
@@ -71,7 +71,9 @@ def fetch_recent_metrics(conn: sqlite3.Connection, table: str, limit: int = 1):
         f"FROM {table} ORDER BY timestamp DESC LIMIT ?"
     )
     cur.execute(query, (limit,))
-    return cur.fetchall()
+    rows = cur.fetchall()
+    conn.commit()
+    return rows
 
 
 def summarize_metrics(entry):
@@ -118,6 +120,7 @@ def main():
     try:
         while True:
             rows = fetch_recent_metrics(conn, args.metrics_table, limit=1)
+            log_db_access(DB_FULL_PATH, f"{COMPONENT_ID_PREFIX}_{args.instance_id}", args.metrics_table, "READ")
             if rows:
                 context.append(rows[0])
                 latest = rows[0]

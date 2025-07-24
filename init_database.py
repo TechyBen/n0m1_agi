@@ -134,6 +134,19 @@ def create_database_schema():
                 created_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         """)
+
+        # 8. db_access_log table - tracks table read/write events
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS db_access_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                component_id TEXT NOT NULL,
+                table_name TEXT NOT NULL,
+                access_type TEXT NOT NULL
+            );
+            """
+        )
         
         # Create trigger to update modified_timestamp
         cursor.execute("""

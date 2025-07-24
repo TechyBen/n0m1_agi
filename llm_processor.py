@@ -16,7 +16,7 @@ except ImportError:
     AutoModelForCausalLM = None
     AutoTokenizer = None
 
-from manager_utils import log_lifecycle_event
+from manager_utils import log_lifecycle_event, log_db_access
 
 # --- Configuration ---
 DB_FILE_NAME = 'n0m1_agi.db'
@@ -62,6 +62,7 @@ def load_config(conn: sqlite3.Connection):
         (COMPONENT_ID,),
     )
     row = cur.fetchone()
+    log_db_access(DB_FULL_PATH, COMPONENT_ID, CONFIG_TABLE, "READ")
     if row:
         read_tables = [t.strip() for t in row[0].split(',') if t.strip()]
         output_table = row[1]
@@ -93,6 +94,7 @@ def main():
                 (COMPONENT_ID,),
             )
             note = cur.fetchone()
+            log_db_access(DB_FULL_PATH, COMPONENT_ID, NOTIFY_TABLE, "READ")
             if note:
                 note_id, note_type, payload = note
                 cur.execute(f"UPDATE {NOTIFY_TABLE} SET processed=1 WHERE id=?", (note_id,))
@@ -107,6 +109,7 @@ def main():
                         try:
                             cur.execute(f"SELECT COUNT(*) FROM {table}")
                             count = cur.fetchone()[0]
+                            log_db_access(DB_FULL_PATH, COMPONENT_ID, table, "READ")
                         except sqlite3.Error:
                             count = 0
                         cur.execute(

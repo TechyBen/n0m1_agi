@@ -11,7 +11,7 @@ import json
 import sqlite3
 from datetime import datetime
 from typing import Dict, List, Optional
-from manager_utils import get_venv_python
+from manager_utils import get_venv_python, log_db_access
 
 # --- Configuration ---
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -93,7 +93,9 @@ class BootSystem:
             conn = sqlite3.connect(DB_FULL_PATH)
             cursor = conn.cursor()
             cursor.execute("SELECT 1 FROM autorun_components LIMIT 1")
+            log_db_access(DB_FULL_PATH, "boot_system", "autorun_components", "READ")
             cursor.execute("SELECT 1 FROM component_lifecycle_log LIMIT 1")
+            log_db_access(DB_FULL_PATH, "boot_system", "component_lifecycle_log", "READ")
             conn.close()
         except sqlite3.Error as e:
             print(f"ERROR: Database tables not properly initialized: {e}")
