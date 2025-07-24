@@ -59,8 +59,8 @@ def main_loop(run_type: str):
         row = cur.fetchone()
         if row and row[0]:
             cur.execute(
-                f"INSERT INTO {NOTIFY_TABLE} (llm_id, notification_type) VALUES (?, ?)",
-                ('main_llm_processor', 'CONFIG_RELOAD'),
+                f"INSERT INTO {NOTIFY_TABLE} (llm_id, notification_type, payload) VALUES (?, ?, ?)",
+                ('main_llm_processor', 'CONFIG_RELOAD', None),
             )
             cur.execute(
                 f"UPDATE {CONFIG_TABLE} SET needs_reload=0 WHERE llm_id=?",
