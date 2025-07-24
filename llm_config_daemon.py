@@ -9,7 +9,7 @@ import os
 import sqlite3
 import time
 
-from manager_utils import log_lifecycle_event
+from manager_utils import log_lifecycle_event, log_db_access
 
 DB_FILE_NAME = 'n0m1_agi.db'
 DB_FULL_PATH = os.path.expanduser(f'~/n0m1_agi/{DB_FILE_NAME}')
@@ -52,6 +52,7 @@ def main_loop(run_type: str):
     conn = sqlite3.connect(DB_FULL_PATH)
     cur = conn.cursor()
     while True:
+        log_db_access(DB_FULL_PATH, COMPONENT_ID, CONFIG_TABLE, "READ")
         cur.execute(
             f"SELECT needs_reload FROM {CONFIG_TABLE} WHERE llm_id=?",
             ('main_llm_processor',),

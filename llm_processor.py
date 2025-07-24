@@ -16,7 +16,7 @@ except ImportError:
     AutoModelForCausalLM = None
     AutoTokenizer = None
 
-from manager_utils import log_lifecycle_event
+from manager_utils import log_lifecycle_event, log_db_access
 
 # --- Configuration ---
 DB_FILE_NAME = 'n0m1_agi.db'
@@ -56,6 +56,7 @@ def announce_startup(run_type: str):
     )
 
 def load_config(conn: sqlite3.Connection):
+    log_db_access(DB_FULL_PATH, COMPONENT_ID, CONFIG_TABLE, "READ")
     cur = conn.cursor()
     cur.execute(
         f"SELECT read_tables, output_table FROM {CONFIG_TABLE} WHERE llm_id=?",
@@ -88,6 +89,7 @@ def main():
     try:
         while True:
             cur = conn.cursor()
+            log_db_access(DB_FULL_PATH, COMPONENT_ID, NOTIFY_TABLE, "READ")
             cur.execute(
                 f"SELECT id, notification_type FROM {NOTIFY_TABLE} WHERE llm_id=? AND processed=0",
                 (COMPONENT_ID,),
@@ -101,6 +103,7 @@ def main():
                 elif note[1] == 'RUN':
                     for table in read_tables:
                         try:
+                            log_db_access(DB_FULL_PATH, COMPONENT_ID, table, "READ")
                             cur.execute(f"SELECT COUNT(*) FROM {table}")
                             count = cur.fetchone()[0]
                         except sqlite3.Error:

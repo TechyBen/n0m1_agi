@@ -18,7 +18,7 @@ except ImportError:
     AutoTokenizer = None
     PeftModel = None
 
-from manager_utils import log_lifecycle_event
+from manager_utils import log_lifecycle_event, log_db_access
 
 # --- Configuration ---
 DB_FILE_NAME = 'n0m1_agi.db'
@@ -64,7 +64,8 @@ def announce_startup(component_id: str, run_type: str):
     )
 
 
-def fetch_recent_metrics(conn: sqlite3.Connection, table: str, limit: int = 1):
+def fetch_recent_metrics(conn: sqlite3.Connection, table: str, component_id: str, limit: int = 1):
+    log_db_access(DB_FULL_PATH, component_id, table, "READ")
     cur = conn.cursor()
     query = (
         f"SELECT timestamp, cpu_temp, cpu_usage, mem_usage "
@@ -117,7 +118,7 @@ def main():
     print(f"[nano:{args.instance_id}] Running idle loop")
     try:
         while True:
-            rows = fetch_recent_metrics(conn, args.metrics_table, limit=1)
+            rows = fetch_recent_metrics(conn, args.metrics_table, component_id, limit=1)
             if rows:
                 context.append(rows[0])
                 latest = rows[0]
@@ -128,6 +129,7 @@ def main():
                         f"INSERT INTO {OUTPUT_TABLE} (nano_id, content) VALUES (?, ?)",
                         (args.instance_id, summary),
                     )
+                    log_db_access(DB_FULL_PATH, component_id, OUTPUT_TABLE, "WRITE")
                     conn.commit()
             time.sleep(args.pull_interval)
     except KeyboardInterrupt:

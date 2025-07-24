@@ -90,6 +90,19 @@ def create_database_schema():
             );
             """
         )
+
+        # 6. db_access_log table - Records DB table read/write events
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS db_access_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                component_id TEXT,
+                table_name TEXT NOT NULL,
+                access_type TEXT NOT NULL CHECK (access_type IN ('READ', 'WRITE'))
+            );
+            """
+        )
         
         # Create indexes for better performance
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_ac_manager ON autorun_components (manager_affinity);")
@@ -99,6 +112,9 @@ def create_database_schema():
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_cll_timestamp ON component_lifecycle_log (event_timestamp);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_temp_timestamp ON cpu_temperature_log (timestamp);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_metrics_timestamp ON system_metrics_log (timestamp);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_dbal_component ON db_access_log (component_id);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_dbal_table ON db_access_log (table_name);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_dbal_timestamp ON db_access_log (timestamp);")
 
         # 6. llm_io_config table - runtime configuration for LLM processors
         cursor.execute("""

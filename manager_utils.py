@@ -171,6 +171,25 @@ def log_lifecycle_event(
         if conn:
             conn.close()
 
+def log_db_access(db_path: str, component_id: str, table: str, access_type: str) -> bool:
+    """Record a database table access event."""
+    conn = None
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO db_access_log (component_id, table_name, access_type) VALUES (?, ?, ?)",
+            (component_id, table, access_type),
+        )
+        conn.commit()
+        return True
+    except sqlite3.Error as e:
+        print(f"Database error logging db access: {e}")
+        return False
+    finally:
+        if conn:
+            conn.close()
+
 def get_component_full_status(pid_file: str, component_id: str) -> Tuple[str, Optional[int]]:
     """
     Get component status with PID.
