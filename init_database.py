@@ -90,6 +90,18 @@ def create_database_schema():
             );
             """
         )
+
+        # 6. llm_outputs table - Stores LLM processor generated outputs
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS llm_outputs (
+                id INTEGER PRIMARY KEY,
+                llm_id TEXT,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                content TEXT
+            );
+            """
+        )
         
         # Create indexes for better performance
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_ac_manager ON autorun_components (manager_affinity);")
@@ -99,8 +111,9 @@ def create_database_schema():
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_cll_timestamp ON component_lifecycle_log (event_timestamp);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_temp_timestamp ON cpu_temperature_log (timestamp);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_metrics_timestamp ON system_metrics_log (timestamp);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_llm_out_timestamp ON llm_outputs (timestamp);")
 
-        # 6. llm_io_config table - runtime configuration for LLM processors
+        # 7. llm_io_config table - runtime configuration for LLM processors
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS llm_io_config (
                 llm_id TEXT PRIMARY KEY,
@@ -110,7 +123,7 @@ def create_database_schema():
             );
         """)
 
-        # 7. llm_notifications table - push style notifications for LLMs
+        # 8. llm_notifications table - push style notifications for LLMs
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS llm_notifications (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -236,7 +249,7 @@ def populate_default_components():
         cursor.execute(
             """
             INSERT OR IGNORE INTO llm_io_config (llm_id, read_tables, output_table, needs_reload)
-            VALUES ('main_llm_processor', 'system_metrics_log', 'nano_outputs', 0)
+            VALUES ('main_llm_processor', 'system_metrics_log', 'llm_outputs', 0)
             """
         )
         if cursor.rowcount > 0:
