@@ -116,6 +116,7 @@ def create_database_schema():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 llm_id TEXT NOT NULL,
                 notification_type TEXT NOT NULL,
+                payload TEXT,
                 processed INTEGER DEFAULT 0,
                 created_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );

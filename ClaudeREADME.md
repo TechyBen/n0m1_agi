@@ -200,6 +200,16 @@ notification to ``llm_notifications`` which causes ``llm_processor`` to reload
 its settings. A ``RUN`` notification instructs the processor to read from the
 allowed tables and write results to the designated output table.
 
+``llm_notifications`` also accepts an optional ``payload`` column. When
+``llm_config_daemon`` inserts a ``CONFIG_RELOAD`` row the payload is ``NULL``,
+but other daemons may send ``PUSH`` notifications with a comma separated list of
+tables to read immediately. ``llm_processor`` treats a ``RUN`` or ``PUSH``
+notification with a payload as an instruction to read those tables once and
+store the results. A ``PULL_REQUEST`` notification causes the processor to write
+``REQUEST:<payload>`` into its output table so external components can respond.
+This mechanism allows other daemons to trigger ad-hoc runs or for the LLM to
+ask for additional data while running.
+
 Custom Managers
 Managers should:
 

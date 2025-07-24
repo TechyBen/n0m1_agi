@@ -89,17 +89,21 @@ def main():
         while True:
             cur = conn.cursor()
             cur.execute(
-                f"SELECT id, notification_type FROM {NOTIFY_TABLE} WHERE llm_id=? AND processed=0",
+                f"SELECT id, notification_type, payload FROM {NOTIFY_TABLE} WHERE llm_id=? AND processed=0",
                 (COMPONENT_ID,),
             )
             note = cur.fetchone()
             if note:
-                cur.execute(f"UPDATE {NOTIFY_TABLE} SET processed=1 WHERE id=?", (note[0],))
+                note_id, note_type, payload = note
+                cur.execute(f"UPDATE {NOTIFY_TABLE} SET processed=1 WHERE id=?", (note_id,))
                 conn.commit()
-                if note[1] == 'CONFIG_RELOAD':
+                if note_type == 'CONFIG_RELOAD':
                     read_tables, output_table = load_config(conn)
-                elif note[1] == 'RUN':
-                    for table in read_tables:
+                elif note_type in {'RUN', 'PUSH'}:
+                    tables = read_tables
+                    if payload:
+                        tables = [t.strip() for t in payload.split(',') if t.strip()]
+                    for table in tables:
                         try:
                             cur.execute(f"SELECT COUNT(*) FROM {table}")
                             count = cur.fetchone()[0]
@@ -109,6 +113,12 @@ def main():
                             f"INSERT INTO {output_table} (llm_id, content) VALUES (?, ?)",
                             (COMPONENT_ID, f'{table} rows={count}'),
                         )
+                    conn.commit()
+                elif note_type == 'PULL_REQUEST' and payload:
+                    cur.execute(
+                        f"INSERT INTO {output_table} (llm_id, content) VALUES (?, ?)",
+                        (COMPONENT_ID, f'REQUEST:{payload}'),
+                    )
                     conn.commit()
 
             time.sleep(POLL_INTERVAL)
