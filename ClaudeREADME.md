@@ -127,6 +127,10 @@ cpu_temperature_log
 Example data table for the temperature daemon
 system_metrics_log
 Cross-platform metrics collected by system_metrics_daemon
+llm_outputs
+Responses from LLM components (id, llm_id, timestamp, content)
+db_access_log
+Records table reads and writes via ``log_db_access``
 Configuration
 Optional config.json
 json{
@@ -194,7 +198,8 @@ Configuring the Main LLM
 ------------------------
 The tables ``llm_io_config`` and ``llm_notifications`` allow runtime control of
 the main language model. ``llm_io_config`` stores comma-separated input tables
-and the output table for each LLM. Set ``needs_reload`` to ``1`` to signal a
+and the output table for each LLM. The default configuration sets this to
+``llm_outputs``. Set ``needs_reload`` to ``1`` to signal a
 configuration change. The ``llm_config_daemon`` will write a ``CONFIG_RELOAD``
 notification to ``llm_notifications`` which causes ``llm_processor`` to reload
 its settings. A ``RUN`` notification instructs the processor to read from the
@@ -209,6 +214,23 @@ store the results. A ``PULL_REQUEST`` notification causes the processor to write
 ``REQUEST:<payload>`` into its output table so external components can respond.
 This mechanism allows other daemons to trigger ad-hoc runs or for the LLM to
 ask for additional data while running.
+
+LLM Outputs Table
+-----------------
+Results from ``llm_processor`` are persisted in ``llm_outputs``. Each row has:
+``id`` INTEGER PRIMARY KEY,
+``llm_id`` TEXT,
+``timestamp`` TIMESTAMP, and ``content`` TEXT.
+Other components can read this table to consume generated responses.
+
+Database Access Logging
+----------------------
+Each component records its database interactions by calling
+``log_db_access(db_path, component_id, table_name, access_type)``. This helper
+inserts a row into ``db_access_log`` with the component name, table touched, and
+whether the action was a ``READ`` or ``WRITE``. The table schema is:
+``id`` INTEGER PRIMARY KEY, ``timestamp`` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+``component_id`` TEXT, ``table_name`` TEXT, ``access_type`` TEXT.
 
 Custom Managers
 Managers should:
