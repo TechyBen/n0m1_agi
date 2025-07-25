@@ -218,6 +218,9 @@ insert or update ``nano_foo`` in ``autorun_components`` with
 ``desired_state='active'``. This allows the language model to start other
 components dynamically.
 
+Run the daemon manually with ``python llm_command_daemon.py`` or add it to the
+``autorun_components`` table so ``daemon_manager`` launches it automatically.
+
 Custom Managers
 Managers should:
 
