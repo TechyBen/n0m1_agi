@@ -21,7 +21,14 @@ def setup_db(tmp_path):
         """CREATE TABLE llm_io_config (llm_id TEXT PRIMARY KEY, read_tables TEXT, output_table TEXT, needs_reload INTEGER)"""
     )
     conn.execute(
-        """CREATE TABLE llm_notifications (id INTEGER PRIMARY KEY AUTOINCREMENT, llm_id TEXT, notification_type TEXT, processed INTEGER DEFAULT 0, created_timestamp TEXT DEFAULT CURRENT_TIMESTAMP)"""
+        """CREATE TABLE llm_notifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            llm_id TEXT,
+            notification_type TEXT,
+            payload TEXT,
+            processed INTEGER DEFAULT 0,
+            created_timestamp TEXT DEFAULT CURRENT_TIMESTAMP
+        )"""
     )
     conn.execute(
         """CREATE TABLE system_metrics_log (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT DEFAULT CURRENT_TIMESTAMP, cpu_temp REAL, cpu_usage REAL, mem_usage REAL)"""
