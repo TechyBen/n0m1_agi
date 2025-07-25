@@ -55,6 +55,8 @@ chmod +x n0m1_control.py
 
 # View recent system metrics
 ./n0m1_control.py metrics --limit 5
+# View recent LLM outputs
+sqlite3 ~/n0m1_agi/n0m1_agi.db "SELECT * FROM llm_outputs ORDER BY id DESC LIMIT 5"
 3. Component Management
 bash# Enable a component
 ./n0m1_control.py enable system_metrics_daemon
@@ -226,6 +228,20 @@ This table has the columns:
 
 The ``output_table`` field in ``llm_io_config`` defaults to ``llm_outputs`` but can
 be customized per LLM.
+
+Database Access Log
+-------------------
+Every component should record its database interactions using the
+``log_db_access`` helper in ``manager_utils``.  This function writes one row to
+the ``db_access_log`` table for each read or write and has the schema:
+
+* ``id`` – primary key
+* ``timestamp`` – when the access occurred
+* ``component_id`` – component performing the action
+* ``table_name`` – table that was accessed
+* ``access_type`` – ``READ`` or ``WRITE``
+
+Use this information to audit component behavior and troubleshoot issues.
 
 Custom Managers
 Managers should:
