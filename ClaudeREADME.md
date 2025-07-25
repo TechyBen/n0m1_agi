@@ -210,6 +210,14 @@ store the results. A ``PULL_REQUEST`` notification causes the processor to write
 This mechanism allows other daemons to trigger ad-hoc runs or for the LLM to
 ask for additional data while running.
 
+LLM Command Daemon
+------------------
+The ``llm_command_daemon`` watches the ``llm_outputs`` table for rows whose
+``content`` begins with ``CMD:``. A command like ``CMD:START nano_foo`` will
+insert or update ``nano_foo`` in ``autorun_components`` with
+``desired_state='active'``. This allows the language model to start other
+components dynamically.
+
 Custom Managers
 Managers should:
 
