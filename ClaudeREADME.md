@@ -4,7 +4,7 @@ System Architecture
 n0m1_agi/
 ├── boot_system_enhanced.py    # Main boot system with monitoring
 ├── daemon_manager.py          # Manages daemon components
-├── nano_manager.py            # Manages nano instances  
+├── nano_manager.py            # Manages nano instances
 ├── main_llm_manager.py        # Manages LLM processor
 ├── manager_utils.py           # Shared utilities
 ├── init_database.py           # Database initialization
