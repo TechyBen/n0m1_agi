@@ -57,6 +57,7 @@ chmod +x n0m1_control.py
 ./n0m1_control.py metrics --limit 5
 # View recent LLM outputs
 sqlite3 ~/n0m1_agi/n0m1_agi.db "SELECT * FROM llm_outputs ORDER BY id DESC LIMIT 5"
+
 3. Component Management
 bash# Enable a component
 ./n0m1_control.py enable system_metrics_daemon
