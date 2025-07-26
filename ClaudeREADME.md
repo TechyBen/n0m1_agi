@@ -132,6 +132,8 @@ Example data table for the temperature daemon
 cpu_usage_log
 memory_usage_log
 Separate tables for CPU and memory usage collected by dedicated daemons
+nano_prompts
+Persistent prompt text for each nano instance (use needs_reload flag to update)
 Configuration
 Optional config.json
 json{

@@ -27,6 +27,14 @@ def setup_db(tmp_path):
     conn.execute(
         """CREATE TABLE nano_outputs (id INTEGER PRIMARY KEY AUTOINCREMENT, nano_id TEXT, timestamp TEXT DEFAULT CURRENT_TIMESTAMP, content TEXT)"""
     )
+    conn.execute(
+        """CREATE TABLE nano_prompts (
+            nano_id TEXT PRIMARY KEY,
+            prompt TEXT NOT NULL,
+            modified_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            needs_reload INTEGER DEFAULT 0
+        )"""
+    )
     conn.commit()
     conn.close()
     return db
