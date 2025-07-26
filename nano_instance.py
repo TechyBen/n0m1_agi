@@ -24,8 +24,8 @@ from manager_utils import log_lifecycle_event, log_db_access
 DB_FILE_NAME = 'n0m1_agi.db'
 DB_FULL_PATH = os.path.expanduser(f'~/n0m1_agi/{DB_FILE_NAME}')
 METRICS_TABLE = 'system_metrics_log'
+SUMMARY_TABLE = 'nano_outputs'
 LIFECYCLE_TABLE_NAME = 'component_lifecycle_log'
-OUTPUT_TABLE = 'nano_outputs'
 COMPONENT_ID_PREFIX = 'nano_instance'
 # --- End Configuration ---
 
@@ -66,23 +66,38 @@ def announce_startup(component_id: str, run_type: str):
 
 def fetch_recent_metrics(conn: sqlite3.Connection, table: str, limit: int = 1):
     cur = conn.cursor()
+    cur.execute(f"PRAGMA table_info({table})")
+    cols = [r[1] for r in cur.fetchall()]
+    metric_col = None
+    for c in ("temperature_celsius", "cpu_usage", "mem_usage", "cpu_temp"):
+        if c in cols:
+            metric_col = c
+            break
+    if not metric_col:
+        raise ValueError(f"Unknown metric column in {table}")
     query = (
-        f"SELECT timestamp, cpu_temp, cpu_usage, mem_usage "
-        f"FROM {table} ORDER BY timestamp DESC LIMIT ?"
+        f"SELECT timestamp, {metric_col} FROM {table} ORDER BY timestamp DESC LIMIT ?"
     )
     cur.execute(query, (limit,))
     rows = cur.fetchall()
     conn.commit()
-    return rows
+    return rows, metric_col
 
 
-def summarize_metrics(entry):
+def summarize_metrics(entry, metric_col):
     """Return summary string if metrics indicate noteworthy event."""
     if not entry:
         return None
-    ts, cpu_temp, cpu_usage, mem_usage = entry
-    if cpu_temp is not None and cpu_temp > 80:
-        return f"High CPU temperature detected: {cpu_temp}C"
+    ts, value = entry
+    if metric_col in {"temperature_celsius", "cpu_temp"}:
+        if value is not None and value > 80:
+            return f"High CPU temperature detected: {value}C"
+    elif metric_col == "cpu_usage":
+        if value is not None and value > 90:
+            return f"High CPU usage detected: {value}%"
+    elif metric_col == "mem_usage":
+        if value is not None and value > 90:
+            return f"High memory usage detected: {value}%"
     return None
 
 
@@ -93,6 +108,7 @@ def main():
     parser.add_argument('--run_type', default='MANUAL_RUN')
     parser.add_argument('--db_path', default=DB_FULL_PATH, help='Path to metrics database')
     parser.add_argument('--metrics_table', default=METRICS_TABLE, help='Table to read metrics from')
+    parser.add_argument('--summary_table', default=SUMMARY_TABLE, help='Table to store summaries')
     parser.add_argument('--pull_interval', type=int, default=5, help='Seconds between metric pulls')
     parser.add_argument('--lora', dest='lora_path', help='Optional LoRA weights path')
     parser.add_argument('--system_prompt', help='Path to system prompt text file')
@@ -119,16 +135,16 @@ def main():
     print(f"[nano:{args.instance_id}] Running idle loop")
     try:
         while True:
-            rows = fetch_recent_metrics(conn, args.metrics_table, limit=1)
+            rows, metric_col = fetch_recent_metrics(conn, args.metrics_table, limit=1)
             log_db_access(DB_FULL_PATH, f"{COMPONENT_ID_PREFIX}_{args.instance_id}", args.metrics_table, "READ")
             if rows:
                 context.append(rows[0])
                 latest = rows[0]
                 print(f"[nano:{args.instance_id}] Latest metrics: {latest}")
-                summary = summarize_metrics(latest)
+                summary = summarize_metrics(latest, metric_col)
                 if summary:
                     conn.execute(
-                        f"INSERT INTO {OUTPUT_TABLE} (nano_id, content) VALUES (?, ?)",
+                        f"INSERT INTO {args.summary_table} (nano_id, content) VALUES (?, ?)",
                         (args.instance_id, summary),
                     )
                     conn.commit()
