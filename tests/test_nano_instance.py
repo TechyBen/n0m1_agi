@@ -27,25 +27,22 @@ def setup_test_db(tmp_path):
         )"""
     )
     conn.execute(
-        """CREATE TABLE system_metrics_log (
+        """CREATE TABLE cpu_usage_log (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-            cpu_temp REAL,
-            cpu_usage REAL NOT NULL,
-            mem_usage REAL NOT NULL
+            cpu_usage REAL
         )"""
     )
     conn.execute(
-        """CREATE TABLE nano_outputs (
+        """CREATE TABLE cpu_usage_summary (
             id INTEGER PRIMARY KEY,
             nano_id TEXT,
             timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             content TEXT
         )"""
     )
-    # insert a metrics row with high temperature
     conn.execute(
-        "INSERT INTO system_metrics_log (cpu_temp, cpu_usage, mem_usage) VALUES (85, 1, 1)"
+        "INSERT INTO cpu_usage_log (cpu_usage) VALUES (95)"
     )
     conn.commit()
     conn.close()
@@ -58,7 +55,8 @@ def test_nano_instance_writes_output(tmp_path, monkeypatch):
     monkeypatch.setattr(nano_instance, "DB_FULL_PATH", db_path)
 
     # speed up loop
-    monkeypatch.setattr(nano_instance, "METRICS_TABLE", "system_metrics_log")
+    monkeypatch.setattr(nano_instance, "METRICS_TABLE", "cpu_usage_log")
+    monkeypatch.setattr(nano_instance, "SUMMARY_TABLE", "cpu_usage_summary")
 
     def fake_sleep(_):
         raise StopIteration
@@ -71,7 +69,7 @@ def test_nano_instance_writes_output(tmp_path, monkeypatch):
 
     conn = sqlite3.connect(db_path)
     cur = conn.cursor()
-    cur.execute("SELECT COUNT(*) FROM nano_outputs")
+    cur.execute("SELECT COUNT(*) FROM cpu_usage_summary")
     count = cur.fetchone()[0]
     conn.close()
 

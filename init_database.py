@@ -68,18 +68,36 @@ def create_database_schema():
             );
         """)
 
-        # 4. system_metrics_log table - Generic system metrics
+        # 4. cpu_usage_log table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS cpu_usage_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                cpu_usage REAL
+            );
+        """)
+
+        # 5. memory_usage_log table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS memory_usage_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                mem_usage REAL
+            );
+        """)
+
+        # 6. system_metrics_log table - retained for backward compatibility
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS system_metrics_log (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
                 cpu_temp REAL,
-                cpu_usage REAL NOT NULL,
-                mem_usage REAL NOT NULL
+                cpu_usage REAL,
+                mem_usage REAL
             );
         """)
 
-        # 5. nano_outputs table - Stores nano instance generated summaries
+        # 7. nano_outputs table - Stores nano instance generated summaries
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS nano_outputs (
@@ -91,7 +109,43 @@ def create_database_schema():
             """
         )
 
-        # 6. llm_outputs table - Stores LLM processor generated outputs
+        # 8. cpu_temp_summary table
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS cpu_temp_summary (
+                id INTEGER PRIMARY KEY,
+                nano_id TEXT,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                content TEXT
+            );
+            """
+        )
+
+        # 9. cpu_usage_summary table
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS cpu_usage_summary (
+                id INTEGER PRIMARY KEY,
+                nano_id TEXT,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                content TEXT
+            );
+            """
+        )
+
+        # 10. memory_usage_summary table
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS memory_usage_summary (
+                id INTEGER PRIMARY KEY,
+                nano_id TEXT,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                content TEXT
+            );
+            """
+        )
+
+        # 11. llm_outputs table - Stores LLM processor generated outputs
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS llm_outputs (
@@ -190,13 +244,22 @@ def populate_default_components():
                 'description': 'CPU temperature monitoring daemon'
             },
             {
-                'component_id': 'system_metrics_daemon',
-                'base_script_name': 'system_metrics_daemon.py',
+                'component_id': 'cpu_usage_daemon',
+                'base_script_name': 'cpu_usage_daemon.py',
                 'manager_affinity': 'daemon_manager',
                 'desired_state': 'active',
                 'launch_args_json': '{}',
                 'run_type_on_boot': 'PRIMARY_RUN',
-                'description': 'Cross-platform system metrics collector'
+                'description': 'CPU usage monitoring daemon'
+            },
+            {
+                'component_id': 'mem_usage_daemon',
+                'base_script_name': 'mem_usage_daemon.py',
+                'manager_affinity': 'daemon_manager',
+                'desired_state': 'active',
+                'launch_args_json': '{}',
+                'run_type_on_boot': 'PRIMARY_RUN',
+                'description': 'Memory usage monitoring daemon'
             },
             {
                 'component_id': 'main_llm_processor',
@@ -234,6 +297,33 @@ def populate_default_components():
                 'launch_args_json': '{"--instance_id": "collector_01", "--mode": "collection"}',
                 'run_type_on_boot': 'PRIMARY_RUN',
                 'description': 'Nano instance for data collection'
+            },
+            {
+                'component_id': 'nano_cpu_temp',
+                'base_script_name': 'nano_instance.py',
+                'manager_affinity': 'nano_manager',
+                'desired_state': 'inactive',
+                'launch_args_json': '{"--instance_id": "cpu_temp", "--metrics_table": "cpu_temperature_log", "--summary_table": "cpu_temp_summary"}',
+                'run_type_on_boot': 'PRIMARY_RUN',
+                'description': 'Nano summarizer for CPU temperature'
+            },
+            {
+                'component_id': 'nano_cpu_usage',
+                'base_script_name': 'nano_instance.py',
+                'manager_affinity': 'nano_manager',
+                'desired_state': 'inactive',
+                'launch_args_json': '{"--instance_id": "cpu_usage", "--metrics_table": "cpu_usage_log", "--summary_table": "cpu_usage_summary"}',
+                'run_type_on_boot': 'PRIMARY_RUN',
+                'description': 'Nano summarizer for CPU usage'
+            },
+            {
+                'component_id': 'nano_mem_usage',
+                'base_script_name': 'nano_instance.py',
+                'manager_affinity': 'nano_manager',
+                'desired_state': 'inactive',
+                'launch_args_json': '{"--instance_id": "mem_usage", "--metrics_table": "memory_usage_log", "--summary_table": "memory_usage_summary"}',
+                'run_type_on_boot': 'PRIMARY_RUN',
+                'description': 'Nano summarizer for memory usage'
             }
         ]
         
@@ -263,7 +353,12 @@ def populate_default_components():
         cursor.execute(
             """
             INSERT OR IGNORE INTO llm_io_config (llm_id, read_tables, output_table, needs_reload)
-            VALUES ('main_llm_processor', 'system_metrics_log', 'llm_outputs', 0)
+            VALUES (
+                'main_llm_processor',
+                'cpu_temp_summary,cpu_usage_summary,memory_usage_summary',
+                'llm_outputs',
+                0
+            )
             """
         )
         if cursor.rowcount > 0:

@@ -9,17 +9,21 @@ n0m1_agi/
 ├── manager_utils.py           # Shared utilities
 ├── init_database.py           # Database initialization
 ├── n0m1_control.py           # System control interface
-├── temp_main_daemon.py        # macOS-only temperature daemon
-├── system_metrics_daemon.py   # Cross-platform system metrics daemon
+├── temp_main_daemon.py        # CPU temperature daemon
+├── cpu_usage_daemon.py        # CPU usage daemon
+├── mem_usage_daemon.py        # Memory usage daemon
 ├── config.json               # Optional configuration
 ├── n0m1_agi.db              # SQLite database
 ├── logs/                     # Component logs
 ├── logs_managers/            # Manager logs
 └── pids/                     # PID files
 
-The new `system_metrics_daemon.py` collects CPU temperature (using macOS SMC on
-Darwin or `psutil` on Linux/Windows), CPU usage, and memory usage and stores the
-data in the `system_metrics_log` table.
+Dedicated daemons collect system metrics:
+`temp_main_daemon.py` logs CPU temperature to `cpu_temperature_log`,
+`cpu_usage_daemon.py` writes CPU usage to `cpu_usage_log`, and
+`mem_usage_daemon.py` records memory usage in `memory_usage_log`.
+Nano LLMs summarize each metric into tables like `cpu_temp_summary` which the
+main LLM can then read.
 Quick Start
 1. Initial Setup
 bash# Create virtual environment
@@ -57,13 +61,13 @@ chmod +x n0m1_control.py
 ./n0m1_control.py metrics --limit 5
 3. Component Management
 bash# Enable a component
-./n0m1_control.py enable system_metrics_daemon
+./n0m1_control.py enable cpu_usage_daemon
 
 # Disable a component
 ./n0m1_control.py disable nano_analyzer_01
 
 # View component logs
-./n0m1_control.py logs system_metrics_daemon
+./n0m1_control.py logs cpu_usage_daemon
 
 # Follow logs in real-time
 ./n0m1_control.py logs -f daemon_manager
@@ -74,7 +78,7 @@ Fixed typo in temp_main_daemon.py (annce_startup → announce_startup)
 Stop component logic is implemented for daemon_manager, but remains a
 placeholder in other managers
 Added proper error handling throughout
-Added system_metrics_daemon for cross-platform CPU and memory metrics
+Added dedicated daemons for CPU temperature, usage and memory metrics
 
 2. Database Management
 
@@ -125,8 +129,9 @@ Timestamps and PIDs
 
 cpu_temperature_log
 Example data table for the temperature daemon
-system_metrics_log
-Cross-platform metrics collected by system_metrics_daemon
+cpu_usage_log
+memory_usage_log
+Separate tables for CPU and memory usage collected by dedicated daemons
 Configuration
 Optional config.json
 json{
