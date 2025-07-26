@@ -25,6 +25,7 @@ DB_FILE_NAME = 'n0m1_agi.db'
 DB_FULL_PATH = os.path.expanduser(f'~/n0m1_agi/{DB_FILE_NAME}')
 METRICS_TABLE = 'system_metrics_log'
 SUMMARY_TABLE = 'nano_outputs'
+PROMPTS_TABLE = 'nano_prompts'
 LIFECYCLE_TABLE_NAME = 'component_lifecycle_log'
 COMPONENT_ID_PREFIX = 'nano_instance'
 # --- End Configuration ---
@@ -101,6 +102,30 @@ def summarize_metrics(entry, metric_col):
     return None
 
 
+def load_prompt(conn: sqlite3.Connection, nano_id: str):
+    cur = conn.cursor()
+    cur.execute(
+        f"SELECT prompt, needs_reload FROM {PROMPTS_TABLE} WHERE nano_id=?",
+        (nano_id,),
+    )
+    row = cur.fetchone()
+    log_db_access(DB_FULL_PATH, f"{COMPONENT_ID_PREFIX}_{nano_id}", PROMPTS_TABLE, "READ")
+    if not row:
+        return None, False
+    prompt, needs_reload = row
+    return prompt, bool(needs_reload)
+
+
+def mark_prompt_reloaded(conn: sqlite3.Connection, nano_id: str):
+    cur = conn.cursor()
+    cur.execute(
+        f"UPDATE {PROMPTS_TABLE} SET needs_reload=0, modified_timestamp=CURRENT_TIMESTAMP WHERE nano_id=?",
+        (nano_id,),
+    )
+    conn.commit()
+    log_db_access(DB_FULL_PATH, f"{COMPONENT_ID_PREFIX}_{nano_id}", PROMPTS_TABLE, "WRITE")
+
+
 def main():
     parser = argparse.ArgumentParser(description='Nano instance')
     parser.add_argument('--instance_id', default='default', help='Instance identifier')
@@ -121,20 +146,30 @@ def main():
 
     model, tokenizer = load_model(args.model, args.lora_path)
 
-    prompt = None
-    if args.system_prompt:
+    conn = sqlite3.connect(args.db_path)
+
+    prompt, needs_reload = load_prompt(conn, args.instance_id)
+    if prompt is None and args.system_prompt:
         try:
             with open(args.system_prompt, "r") as f:
                 prompt = f.read()
         except Exception as e:
             print(f"[nano] Failed to read system prompt: {e}")
+    if needs_reload:
+        mark_prompt_reloaded(conn, args.instance_id)
 
-    conn = sqlite3.connect(args.db_path)
     context = deque(maxlen=args.context_window)
 
     print(f"[nano:{args.instance_id}] Running idle loop")
     try:
         while True:
+            db_prompt, reload_flag = load_prompt(conn, args.instance_id)
+            if db_prompt is not None:
+                if db_prompt != prompt:
+                    prompt = db_prompt
+                if reload_flag:
+                    mark_prompt_reloaded(conn, args.instance_id)
+
             rows, metric_col = fetch_recent_metrics(conn, args.metrics_table, limit=1)
             log_db_access(DB_FULL_PATH, f"{COMPONENT_ID_PREFIX}_{args.instance_id}", args.metrics_table, "READ")
             if rows:

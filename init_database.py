@@ -145,7 +145,19 @@ def create_database_schema():
             """
         )
 
-        # 11. llm_outputs table - Stores LLM processor generated outputs
+        # 11. nano_prompts table - persistent prompts for nano instances
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS nano_prompts (
+                nano_id TEXT PRIMARY KEY,
+                prompt TEXT NOT NULL,
+                modified_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                needs_reload INTEGER DEFAULT 0
+            );
+            """
+        )
+
+        # 12. llm_outputs table - Stores LLM processor generated outputs
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS llm_outputs (
@@ -331,7 +343,7 @@ def populate_default_components():
             # Use INSERT OR IGNORE to avoid duplicates
             cursor.execute("""
                 INSERT OR IGNORE INTO autorun_components
-                (component_id, base_script_name, manager_affinity, desired_state, 
+                (component_id, base_script_name, manager_affinity, desired_state,
                  launch_args_json, run_type_on_boot, description)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             """, (
@@ -348,6 +360,20 @@ def populate_default_components():
                 print(f"  Added component: {component['component_id']} ({component['desired_state']})")
             else:
                 print(f"  Component already exists: {component['component_id']}")
+
+        # Insert default nano prompts
+        default_nano_ids = [
+            'analyzer_01',
+            'collector_01',
+            'cpu_temp',
+            'cpu_usage',
+            'mem_usage',
+        ]
+        for nano_id in default_nano_ids:
+            cursor.execute(
+                "INSERT OR IGNORE INTO nano_prompts (nano_id, prompt) VALUES (?, '')",
+                (nano_id,)
+            )
 
         # Insert default LLM IO configuration
         cursor.execute(

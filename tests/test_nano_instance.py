@@ -42,7 +42,18 @@ def setup_test_db(tmp_path):
         )"""
     )
     conn.execute(
+        """CREATE TABLE nano_prompts (
+            nano_id TEXT PRIMARY KEY,
+            prompt TEXT NOT NULL,
+            modified_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            needs_reload INTEGER DEFAULT 0
+        )"""
+    )
+    conn.execute(
         "INSERT INTO cpu_usage_log (cpu_usage) VALUES (95)"
+    )
+    conn.execute(
+        "INSERT INTO nano_prompts (nano_id, prompt, needs_reload) VALUES ('default', 'test', 1)"
     )
     conn.commit()
     conn.close()
@@ -74,3 +85,28 @@ def test_nano_instance_writes_output(tmp_path, monkeypatch):
     conn.close()
 
     assert count >= 1
+
+
+def test_nano_instance_loads_prompt_and_clears_flag(tmp_path, monkeypatch):
+    db_path = setup_test_db(tmp_path)
+
+    monkeypatch.setattr(nano_instance, "DB_FULL_PATH", db_path)
+    monkeypatch.setattr(nano_instance, "METRICS_TABLE", "cpu_usage_log")
+    monkeypatch.setattr(nano_instance, "SUMMARY_TABLE", "cpu_usage_summary")
+
+    def fake_sleep(_):
+        raise StopIteration
+
+    monkeypatch.setattr(nano_instance.time, "sleep", fake_sleep)
+    monkeypatch.setattr(sys, "argv", ["nano_instance.py"])
+
+    with pytest.raises(StopIteration):
+        nano_instance.main()
+
+    conn = sqlite3.connect(db_path)
+    cur = conn.cursor()
+    cur.execute("SELECT needs_reload FROM nano_prompts WHERE nano_id='default'")
+    flag = cur.fetchone()[0]
+    conn.close()
+
+    assert flag == 0
