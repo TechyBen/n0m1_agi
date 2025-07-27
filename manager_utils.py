@@ -8,6 +8,7 @@ import signal
 import time
 import sqlite3
 import sys
+import subprocess
 from typing import Optional, Tuple
 
 
@@ -29,6 +30,34 @@ def get_venv_python(project_dir: str) -> str:
 def get_pid_file_path(pid_dir: str, component_id: str) -> str:
     """Get the PID file path for a component."""
     return os.path.join(pid_dir, f"{component_id}.pid")
+
+
+def launch_subprocess(cmd, cwd=None, stdout=None, stderr=None):
+    """Launch a subprocess in its own process group cross-platform."""
+    kwargs = {
+        "cwd": cwd,
+        "stdout": stdout,
+        "stderr": stderr,
+    }
+    if os.name == "nt":
+        kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
+    else:
+        kwargs["preexec_fn"] = os.setsid
+    return subprocess.Popen(cmd, **kwargs)
+
+
+def terminate_process(proc):
+    """Terminate a process started with :func:`launch_subprocess`."""
+    if os.name == "nt":
+        try:
+            proc.send_signal(signal.CTRL_BREAK_EVENT)
+        except Exception:
+            proc.terminate()
+    else:
+        try:
+            os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+        except ProcessLookupError:
+            pass
 
 def is_process_running(pid: Optional[int]) -> bool:
     """Check if a process with given PID is running."""

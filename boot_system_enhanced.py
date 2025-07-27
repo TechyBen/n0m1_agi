@@ -11,7 +11,12 @@ import json
 import sqlite3
 from datetime import datetime
 from typing import Dict, List, Optional
-from manager_utils import get_venv_python, log_db_access
+from manager_utils import (
+    get_venv_python,
+    log_db_access,
+    launch_subprocess,
+    terminate_process,
+)
 
 # --- Configuration ---
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -156,12 +161,11 @@ class BootSystem:
             with open(log_file, 'a') as f:
                 f.write(f"\n\n=== {config['name']} started at {timestamp} ===\n")
                 
-            process = subprocess.Popen(
+            process = launch_subprocess(
                 [VENV_PYTHON_PATH, script_path, 'autorun'],
                 cwd=PROJECT_DIR,
                 stdout=open(log_file, 'a'),
                 stderr=open(err_file, 'a'),
-                preexec_fn=os.setsid  # Create new process group
             )
             
             print(f"[BOOT] {config['name']} launched with PID: {process.pid}")
@@ -265,7 +269,7 @@ class BootSystem:
         for manager_script, process in self.launched_managers.items():
             try:
                 print(f"[BOOT] Sending SIGTERM to {MANAGER_CONFIG[manager_script]['name']} (PID: {process.pid})")
-                os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+                terminate_process(process)
                 self.log_manager_event(manager_script, process.pid, 'MANAGER_SHUTDOWN_REQUESTED')
             except Exception as e:
                 print(f"[BOOT] Error sending SIGTERM to {manager_script}: {e}")
@@ -289,9 +293,12 @@ class BootSystem:
             print("[BOOT] Some managers didn't shutdown gracefully. Forcing...")
             for manager_script, process in self.launched_managers.items():
                 try:
-                    os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+                    if os.name == "nt":
+                        process.kill()
+                    else:
+                        os.killpg(os.getpgid(process.pid), signal.SIGKILL)
                     print(f"[BOOT] Force killed {MANAGER_CONFIG[manager_script]['name']}")
-                except:
+                except Exception:
                     pass
                     
     def cleanup(self):
