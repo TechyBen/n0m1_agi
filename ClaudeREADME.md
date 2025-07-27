@@ -24,6 +24,12 @@ Dedicated daemons collect system metrics:
 `mem_usage_daemon.py` records memory usage in `memory_usage_log`.
 Nano LLMs summarize each metric into tables like `cpu_temp_summary` which the
 main LLM can then read.
+
+Windows Support
+---------------
+The process management utilities now run on Windows. Subprocesses are launched
+in their own process groups using `CREATE_NEW_PROCESS_GROUP` and terminated with
+`CTRL_BREAK_EVENT` when shutting down.
 Quick Start
 1. Initial Setup
 bash# Create virtual environment

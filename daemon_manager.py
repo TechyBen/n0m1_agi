@@ -23,6 +23,7 @@ from manager_utils import (
     log_lifecycle_event,
     log_db_access,
     create_required_directories,
+    launch_subprocess,
 )
 
 # --- Configuration ---
@@ -70,12 +71,11 @@ def start_component(component_id: str, base_script_name: str, launch_args_list: 
 
     try:
         # Launch the component as a new background process
-        process = subprocess.Popen(
+        process = launch_subprocess(
             full_command,
             cwd=PROJECT_DIR,
             stdout=open(log_file, 'a'),
             stderr=open(err_file, 'a'),
-            preexec_fn=os.setsid  # Start in a new session to detach from manager
         )
         # Write the new PID to file
         write_pid_file(pid_file, process.pid)
