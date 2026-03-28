@@ -213,7 +213,25 @@ def create_database_schema():
             );
             """
         )
-        
+
+        # 9. inference_config table - controls the inference backend
+        # To swap CPU -> GPU: UPDATE inference_config SET n_gpu_layers=-1 WHERE active=1
+        # To swap model: UPDATE inference_config SET model_path='...' WHERE active=1
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS inference_config (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                backend TEXT NOT NULL DEFAULT 'llama_cpp',
+                model_path TEXT NOT NULL,
+                n_gpu_layers INTEGER DEFAULT 0,
+                n_ctx INTEGER DEFAULT 2048,
+                n_threads INTEGER DEFAULT 4,
+                temperature REAL DEFAULT 0.1,
+                max_tokens INTEGER DEFAULT 64,
+                active INTEGER DEFAULT 1,
+                description TEXT
+            );
+        """)
+
         # Create trigger to update modified_timestamp
         cursor.execute("""
             CREATE TRIGGER IF NOT EXISTS update_autorun_timestamp 
@@ -389,6 +407,33 @@ def populate_default_components():
         )
         if cursor.rowcount > 0:
             print("  Added llm_io_config for main_llm_processor")
+
+        # Insert default inference config (llama-cpp-python, CPU, DeepHermes GGUF)
+        # To switch to GPU on another machine:
+        #   UPDATE inference_config SET n_gpu_layers=-1 WHERE active=1
+        # To swap model:
+        #   UPDATE inference_config SET model_path='~/path/to/model.gguf' WHERE active=1
+        cursor.execute(
+            """
+            INSERT OR IGNORE INTO inference_config
+                (id, backend, model_path, n_gpu_layers, n_ctx, n_threads,
+                 temperature, max_tokens, active, description)
+            VALUES (
+                1,
+                'llama_cpp',
+                '~/n0m1_agi/nous_agi_old/DeepHermes-3-Llama-3-3B-Preview-q8.gguf',
+                0,
+                2048,
+                4,
+                0.1,
+                64,
+                1,
+                'DeepHermes 3B q8 - CPU inference via llama-cpp-python'
+            )
+            """
+        )
+        if cursor.rowcount > 0:
+            print("  Added inference_config: DeepHermes 3B q8 (CPU, llama_cpp)")
 
         conn.commit()
         print("\nDefault components populated successfully.")

@@ -1,21 +1,18 @@
 #!/usr/bin/env python3
 """Main LLM processing component.
 
-This script loads a language model using the HuggingFace transformers library
-and idles waiting for tasks. It records lifecycle events in the SQLite database
-so managers can monitor its status.
+Polls llm_notifications for tasks, reads nano summaries from the DB,
+calls the shared inference layer, and writes results to llm_outputs.
+All communication is through the DB backbone.
+
+Inference backend is controlled entirely by the inference_config table.
 """
 import argparse
 import os
 import time
 import sqlite3
 
-try:
-    from transformers import AutoModelForCausalLM, AutoTokenizer
-except ImportError:
-    AutoModelForCausalLM = None
-    AutoTokenizer = None
-
+from inference import infer
 from manager_utils import log_lifecycle_event, log_db_access
 
 # --- Configuration ---
@@ -27,18 +24,6 @@ CONFIG_TABLE = 'llm_io_config'
 NOTIFY_TABLE = 'llm_notifications'
 POLL_INTERVAL = 5
 # --- End Configuration ---
-
-
-def load_model(model_name: str):
-    """Load a language model. If transformers is missing, log a warning."""
-    if AutoModelForCausalLM is None:
-        print(f"[{COMPONENT_ID}] transformers not available, skipping model load")
-        return None, None
-    print(f"[{COMPONENT_ID}] Loading model '{model_name}' ...")
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForCausalLM.from_pretrained(model_name)
-    print(f"[{COMPONENT_ID}] Model loaded")
-    return model, tokenizer
 
 
 def announce_startup(run_type: str):
@@ -72,57 +57,95 @@ def load_config(conn: sqlite3.Connection):
     return read_tables, output_table
 
 
+def gather_summaries(conn: sqlite3.Connection, tables: list) -> str:
+    """Read the latest row from each summary table and format as context."""
+    cur = conn.cursor()
+    parts = []
+    for table in tables:
+        try:
+            cur.execute(
+                f"SELECT content FROM {table} ORDER BY timestamp DESC LIMIT 1"
+            )
+            row = cur.fetchone()
+            log_db_access(DB_FULL_PATH, COMPONENT_ID, table, "READ")
+            if row and row[0]:
+                parts.append(f"[{table}] {row[0]}")
+        except sqlite3.Error:
+            pass
+    return "\n".join(parts) if parts else "No nano summaries available yet."
+
+
 def main():
     parser = argparse.ArgumentParser(description='Main LLM Processor')
-    parser.add_argument('--model', default='distilgpt2', help='HuggingFace model name or path')
     parser.add_argument('--run_type', default='MANUAL_RUN', help='Run type reported to lifecycle log')
-    parser.add_argument('--threads', type=int, default=4, help='Thread count hint for model')
     args = parser.parse_args()
 
     announce_startup(args.run_type)
-    load_model(args.model)
 
     conn = sqlite3.connect(DB_FULL_PATH)
     read_tables, output_table = load_config(conn)
 
-    print(f"[{COMPONENT_ID}] Entering idle loop")
+    system_prompt = (
+        "You are the central intelligence of the n0m1_agi system. "
+        "Nano sensors report system metrics to you. "
+        "Analyse the provided summaries, identify anything notable, "
+        "and respond concisely in one or two sentences."
+    )
+
+    print(f"[{COMPONENT_ID}] Entering idle loop — polling {NOTIFY_TABLE} every {POLL_INTERVAL}s")
     try:
         while True:
             cur = conn.cursor()
             cur.execute(
-                f"SELECT id, notification_type, payload FROM {NOTIFY_TABLE} WHERE llm_id=? AND processed=0",
+                f"SELECT id, notification_type, payload FROM {NOTIFY_TABLE} "
+                f"WHERE llm_id=? AND processed=0 ORDER BY id ASC LIMIT 1",
                 (COMPONENT_ID,),
             )
             note = cur.fetchone()
             log_db_access(DB_FULL_PATH, COMPONENT_ID, NOTIFY_TABLE, "READ")
+
             if note:
                 note_id, note_type, payload = note
-                cur.execute(f"UPDATE {NOTIFY_TABLE} SET processed=1 WHERE id=?", (note_id,))
+                cur.execute(
+                    f"UPDATE {NOTIFY_TABLE} SET processed=1 WHERE id=?", (note_id,)
+                )
                 conn.commit()
+
                 if note_type == 'CONFIG_RELOAD':
                     read_tables, output_table = load_config(conn)
+                    print(f"[{COMPONENT_ID}] Config reloaded — reading: {read_tables}")
+
                 elif note_type in {'RUN', 'PUSH'}:
                     tables = read_tables
                     if payload:
                         tables = [t.strip() for t in payload.split(',') if t.strip()]
-                    for table in tables:
-                        try:
-                            cur.execute(f"SELECT COUNT(*) FROM {table}")
-                            count = cur.fetchone()[0]
-                            log_db_access(DB_FULL_PATH, COMPONENT_ID, table, "READ")
-                        except sqlite3.Error:
-                            count = 0
+
+                    context = gather_summaries(conn, tables)
+                    print(f"[{COMPONENT_ID}] Running inference on nano summaries...")
+                    try:
+                        response = infer(context, system_prompt=system_prompt)
+                        print(f"[{COMPONENT_ID}] Response: {response}")
                         cur.execute(
                             f"INSERT INTO {output_table} (llm_id, content) VALUES (?, ?)",
-                            (COMPONENT_ID, f'{table} rows={count}'),
+                            (COMPONENT_ID, response),
                         )
-                    conn.commit()
+                        conn.commit()
+                        log_db_access(DB_FULL_PATH, COMPONENT_ID, output_table, "WRITE")
+                    except Exception as e:
+                        print(f"[{COMPONENT_ID}] Inference error: {e}")
+
                 elif note_type == 'PULL_REQUEST' and payload:
-                    cur.execute(
-                        f"INSERT INTO {output_table} (llm_id, content) VALUES (?, ?)",
-                        (COMPONENT_ID, f'REQUEST:{payload}'),
-                    )
-                    conn.commit()
+                    print(f"[{COMPONENT_ID}] Pull request: {payload}")
+                    try:
+                        response = infer(payload, system_prompt=system_prompt)
+                        cur.execute(
+                            f"INSERT INTO {output_table} (llm_id, content) VALUES (?, ?)",
+                            (COMPONENT_ID, response),
+                        )
+                        conn.commit()
+                        log_db_access(DB_FULL_PATH, COMPONENT_ID, output_table, "WRITE")
+                    except Exception as e:
+                        print(f"[{COMPONENT_ID}] Inference error: {e}")
 
             time.sleep(POLL_INTERVAL)
     except KeyboardInterrupt:
