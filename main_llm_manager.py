@@ -202,19 +202,34 @@ def ensure_autorun_components_active():
         if conn: conn.close()
 
 
+_shutdown_requested = False
+
+def _handle_signal(signum, frame):
+    global _shutdown_requested
+    print(f"[{MANAGER_ID}] Signal {signum} received — shutting down gracefully...")
+    _shutdown_requested = True
+
 if __name__ == "__main__":
     if not os.path.exists(VENV_PYTHON_PATH):
         print(f"ERROR: Python interpreter not found at '{VENV_PYTHON_PATH}'. Exiting.")
         sys.exit(1)
 
-    # Simplified: This manager defaults to ensuring its component(s) are running.
-    # CLI can be expanded later if needed for this manager.
+    signal.signal(signal.SIGTERM, _handle_signal)
+    signal.signal(signal.SIGINT, _handle_signal)
+
     for dir_path_to_check in [PID_DIR, LOGS_DIR]:
         if not os.path.exists(dir_path_to_check): os.makedirs(dir_path_to_check)
-    create_supporting_tables_if_not_exist() # For component_lifecycle_log
-    
-    ensure_autorun_components_active()
-    print(f"[{MANAGER_ID}] Operations cycle complete. This manager will now exit if it only started components.")
-    # Unlike daemons, this manager might just run once at boot to start llm_processor.py,
-    # unless you want it to continuously monitor and restart llm_processor.py if it crashes.
-    # For now, it runs once.
+    create_supporting_tables_if_not_exist()
+
+    CHECK_INTERVAL = 30  # seconds between health checks
+    print(f"[{MANAGER_ID}] Starting — checking LLM processor every {CHECK_INTERVAL}s.")
+
+    while not _shutdown_requested:
+        ensure_autorun_components_active()
+        # Sleep in short increments so SIGTERM is handled promptly
+        for _ in range(CHECK_INTERVAL):
+            if _shutdown_requested:
+                break
+            time.sleep(1)
+
+    print(f"[{MANAGER_ID}] Shutdown complete.")

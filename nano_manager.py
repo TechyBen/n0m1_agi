@@ -202,27 +202,34 @@ def ensure_autorun_components_active():
         if conn:
             conn.close()
 
+_shutdown_requested = False
+
+def _handle_signal(signum, frame):
+    global _shutdown_requested
+    print(f"[{MANAGER_ID}] Signal {signum} received — shutting down gracefully...")
+    _shutdown_requested = True
+
 if __name__ == "__main__":
     if not os.path.exists(VENV_PYTHON_PATH):
         print(f"ERROR: Python interpreter not found at '{VENV_PYTHON_PATH}'. Exiting.")
         sys.exit(1)
 
-    parser = argparse.ArgumentParser(description=f"{MANAGER_ID.replace('_',' ').title()} for n0m1_agi.")
-    # Simplified CLI for managers that are primarily auto-run by boot_system.py
-    # We can expand this later if direct CLI control for individual nanos via nano_manager is needed often.
-    args_action = sys.argv[1] if len(sys.argv) > 1 else 'autorun' # Default to autorun
+    signal.signal(signal.SIGTERM, _handle_signal)
+    signal.signal(signal.SIGINT, _handle_signal)
 
     for dir_path_to_check in [PID_DIR, LOGS_DIR]:
         if not os.path.exists(dir_path_to_check): os.makedirs(dir_path_to_check)
     create_supporting_tables_if_not_exist()
 
-    if args_action == 'autorun':
-        ensure_autorun_components_active()
-    # Add elif for 'start', 'stop', 'status' specific component_id later if needed,
-    # similar to daemon_manager.py's more complex argparse.
-    # For now, boot_system.py launches it, and it does its autorun check.
-    else:
-        print(f"[{MANAGER_ID}] Action '{args_action}' understood as directive to ensure autorun components. For specific start/stop, use dedicated CLI options (to be expanded).")
-        ensure_autorun_components_active() # Defaulting to ensure state
+    CHECK_INTERVAL = 30  # seconds between health checks
+    print(f"[{MANAGER_ID}] Starting — checking nano instances every {CHECK_INTERVAL}s.")
 
-    print(f"[{MANAGER_ID}] Operations cycle complete.")
+    while not _shutdown_requested:
+        ensure_autorun_components_active()
+        # Sleep in short increments so SIGTERM is handled promptly
+        for _ in range(CHECK_INTERVAL):
+            if _shutdown_requested:
+                break
+            time.sleep(1)
+
+    print(f"[{MANAGER_ID}] Shutdown complete.")
