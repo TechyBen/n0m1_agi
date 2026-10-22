@@ -1,0 +1,18 @@
+[Unit]
+Description=n0m1 sensor token learning example
+
+[Service]
+Type=simple
+WorkingDirectory=%h/.local/state/n0m1-sensorlab
+ExecStart=%h/.local/bin/n0m1-sensorlab --source hwmon --steps 0 --interval-ms 1000 --max-train-ms 100 --db cpu.db
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=15
+CPUQuota=20%
+MemoryMax=256M
+Nice=10
+NoNewPrivileges=true
+UMask=0077
+
+[Install]
+WantedBy=default.target

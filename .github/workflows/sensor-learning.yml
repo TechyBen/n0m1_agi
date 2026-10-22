@@ -1,0 +1,35 @@
+name: Rust sensor learning example
+
+on:
+  pull_request:
+    paths:
+      - 'examples/sensor_learning/**'
+      - '.github/workflows/sensor-learning.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'examples/sensor_learning/**'
+      - '.github/workflows/sensor-learning.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: examples/sensor_learning
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the tested Rust toolchain
+        run: rustup toolchain install 1.99.1 --profile minimal --component rustfmt,clippy
+      - name: Check formatting
+        run: cargo +1.99.1 fmt --all -- --check
+      - name: Lint
+        run: cargo +1.99.1 clippy --locked --all-targets -- -D warnings
+      - name: Test
+        run: cargo +1.99.1 test --locked
+      - name: Exercise the release CLI
+        run: cargo +1.99.1 run --locked --release -- --steps 3000 --db "$RUNNER_TEMP/sensor-learning.db"
