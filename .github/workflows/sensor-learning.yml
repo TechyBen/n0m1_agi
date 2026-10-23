@@ -1,14 +1,16 @@
-name: Rust sensor learning example
+name: Sensor learning and Bend comparison
 
 on:
   pull_request:
     paths:
       - 'examples/sensor_learning/**'
+      - 'examples/backend_comparison/**'
       - '.github/workflows/sensor-learning.yml'
   push:
     branches: [main]
     paths:
       - 'examples/sensor_learning/**'
+      - 'examples/backend_comparison/**'
       - '.github/workflows/sensor-learning.yml'
 
 permissions:
@@ -33,3 +35,43 @@ jobs:
         run: cargo +1.99.1 test --locked
       - name: Exercise the release CLI
         run: cargo +1.99.1 run --locked --release -- --steps 3000 --db "$RUNNER_TEMP/sensor-learning.db"
+
+  bend-cpu:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: examples/backend_comparison
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: bendlang/bend
+          ref: b8664b0a7ff36858b353fdbee77e41a3dd3548db
+          path: .toolchains/bend
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.4'
+      - name: Install compilers
+        run: |
+          rustup toolchain install 1.99.1 --profile minimal
+          rustup default 1.99.1
+          sudo apt-get update
+          sudo apt-get install -y clang
+      - name: Test comparison checks
+        run: python3 -m unittest discover -s tests -v
+      - name: Verify the committed fixture
+        working-directory: examples/sensor_learning
+        run: |
+          cargo run --locked --release --example backend_reference -- export "$RUNNER_TEMP/fixture.json"
+          cmp "$RUNNER_TEMP/fixture.json" ../backend_comparison/fixture.json
+      - name: Check laws and compare the CPU kernels
+        run: |
+          python3 harness.py run --backend cpu --threads 1 --bend-source "$GITHUB_WORKSPACE/.toolchains/bend" --out results/linux-cpu-1.json
+          python3 harness.py run --backend cpu --threads 4 --bend-source "$GITHUB_WORKSPACE/.toolchains/bend" --out results/linux-cpu-4.json
+          python3 harness.py compare results/linux-cpu-1.json results/linux-cpu-4.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bend-cpu-comparison
+          path: examples/backend_comparison/results/*.json
+          if-no-files-found: error

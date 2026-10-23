@@ -384,3 +384,11 @@ arbitrary IDs do not acquire language meaning automatically.
 - [Neural Discrete Representation Learning](https://arxiv.org/abs/1711.00937): discrete learned representations; this example is not a VQ-VAE implementation.
 - [Finite Scalar Quantization](https://arxiv.org/abs/2309.15505): related quantization ideas; this four-sign toy bottleneck is not a reproduction of the paper.
 - [Burn](https://github.com/tracel-ai/burn): possible future tensor/autodiff backend.
+
+## Compare the kernel with Bend
+
+The [backend comparison example](../backend_comparison/README.md) replays shared
+weights and features through this Rust model and a Bend port. It checks fixed
+predictions and one heads-only/full update, provides discrete policy laws, and
+includes CPU and M1 Metal runners. It is the first portability milestone; the
+continual-learning engine remains here.
