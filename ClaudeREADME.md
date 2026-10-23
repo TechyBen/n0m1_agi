@@ -1,5 +1,14 @@
 Overview
 The n0m1_agi framework is a robust process management system designed to manage multiple components including daemons, nano instances, and LLM processors. The system features automatic startup, health monitoring, graceful shutdown, and comprehensive logging.
+
+Rust sensor-learning example
+---------------------------
+The [sensor-learning example](examples/sensor_learning/README.md) explores tiny
+neural predictors, fixed sensor tokens, a learned four-bit code, predictive
+surprise, and bounded continual training. It includes a deterministic simulator,
+Linux hwmon input, SQLite records, and candidate promotion checks. It runs
+independently of the Python daemons and includes Fedora setup instructions.
+
 System Architecture
 n0m1_agi/
 ├── boot_system_enhanced.py    # Main boot system with monitoring
